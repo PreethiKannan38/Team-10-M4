@@ -268,6 +268,9 @@ import { EraserTool } from './Tools/EraserTool'
 import { LineTool } from './Tools/LineTool'
 import { RectangleTool } from './Tools/RectangleTool'
 import { CircleTool } from './Tools/CircleTool'
+import { FillTool } from './Tools/FillTool'
+import { TextTool } from './Tools/TextTool'
+import { EyedropperTool } from './Tools/EyedropperTool'
 import { setTool, handlePointerDown, handlePointerMove, handlePointerUp } from './ToolManager'
 import { drawSelectionBox } from './scene/selectionBox'
 
@@ -327,6 +330,17 @@ function redraw(box = null) {
   const lineTool = new LineTool(ctx, buffer, yStrokes)
   const rectangleTool = new RectangleTool(ctx, buffer, yStrokes)
   const circleTool = new CircleTool(ctx, buffer, yStrokes)
+  
+  // Store color change callback for eyedropper
+  let colorChangeCallback = null;
+  
+  const fillTool = new FillTool(ctx, buffer, yStrokes)
+  const textTool = new TextTool(ctx, buffer, yStrokes)
+  const eyedropperTool = new EyedropperTool(ctx, buffer, (color) => {
+    if (colorChangeCallback) {
+      colorChangeCallback(color);
+    }
+  })
 
   setTool(drawTool)
 
@@ -347,11 +361,19 @@ function redraw(box = null) {
     setLine: () => setTool(lineTool),
     setRectangle: () => setTool(rectangleTool),
     setCircle: () => setTool(circleTool),
+    setFill: () => setTool(fillTool),
+    setText: () => setTool(textTool),
+    setEyedropper: (callback) => {
+      colorChangeCallback = callback;
+      setTool(eyedropperTool);
+    },
     setDrawOptions: (options) => {
       drawTool.setOptions(options);
       lineTool.setOptions(options);
       rectangleTool.setOptions(options);
       circleTool.setOptions(options);
+      fillTool.setOptions(options);
+      textTool.setOptions(options);
     },
   }
 }

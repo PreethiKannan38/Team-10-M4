@@ -47,6 +47,13 @@ const App = () => {
       else if (tool === 'line') canvasEngineRef.current.setLine();
       else if (tool === 'rectangle') canvasEngineRef.current.setRectangle();
       else if (tool === 'circle') canvasEngineRef.current.setCircle();
+      else if (tool === 'fill') canvasEngineRef.current.setFill();
+      else if (tool === 'text') canvasEngineRef.current.setText();
+      else if (tool === 'eyedropper') {
+        canvasEngineRef.current.setEyedropper((pickedColor) => {
+          setColor(pickedColor);
+        });
+      }
     }
   };
 
