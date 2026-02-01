@@ -19,10 +19,16 @@ export default function LayerPanel({
   const displayLayers = layers.length > 0 ? layers : defaultLayers;
 
   return (
-    <div className="w-64 bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-2xl flex flex-col border border-gray-700/50 overflow-hidden">
+    <div 
+      className="w-64 backdrop-blur-sm rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+      style={{ backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: '1px' }}
+    >
       {/* Header */}
-      <div className="px-4 py-3 flex items-center justify-between border-b border-gray-700/50">
-        <span className="text-white font-semibold text-sm">Layers</span>
+      <div 
+        className="px-4 py-3 flex items-center justify-between"
+        style={{ borderBottomColor: '#374151', borderBottomWidth: '1px' }}
+      >
+        <span className="font-semibold text-sm" style={{ color: '#ffffff' }}>Layers</span>
         <button 
           onClick={onAddLayer}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-full hover:bg-blue-700 transition-all font-medium shadow-md"
@@ -41,14 +47,29 @@ export default function LayerPanel({
             <div
               key={layer.id}
               onClick={() => !layer.locked && onLayerSelect?.(layer.id)}
+              style={{
+                backgroundColor: layer.locked 
+                  ? '#1a1a1a'
+                  : isActive 
+                    ? '#2563eb'
+                    : '#374151',
+                color: layer.locked ? '#9ca3af' : '#ffffff'
+              }}
               className={cn(
-                "px-3 py-2.5 rounded-lg flex items-center justify-between transition-all",
-                layer.locked 
-                  ? "bg-gray-900/50 text-gray-500 cursor-default" 
-                  : isActive
-                    ? "bg-blue-600 text-white cursor-pointer shadow-md"
-                    : "bg-gray-700/50 text-gray-200 hover:bg-gray-700 cursor-pointer"
+                "px-3 py-2.5 rounded-lg flex items-center justify-between transition-all cursor-pointer",
+                isActive && "shadow-md",
+                layer.locked && "cursor-default"
               )}
+              onMouseEnter={(e) => {
+                if (!layer.locked && !isActive) {
+                  e.currentTarget.style.backgroundColor = '#4b5563';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!layer.locked && !isActive) {
+                  e.currentTarget.style.backgroundColor = '#374151';
+                }
+              }}
             >
               <div className="flex items-center gap-2.5 flex-1 min-w-0">
                 {layer.locked && <Lock className="w-4 h-4 flex-shrink-0" />}
