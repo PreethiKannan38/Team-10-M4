@@ -58,15 +58,15 @@ export default function LayerPanel({
               key={layer.id}
               onClick={() => !layer.locked && onLayerSelect?.(layer.id)}
               onMouseEnter={() => !layer.locked && !isActive && setHoveredLayer(layer.id)}
-              onMouseLeave={() => setHoveredLayer(null)}
+              onMouseLeave={() => !layer.locked && !isActive && setHoveredLayer(null)}
               style={{
                 backgroundColor: getBackgroundColor(),
                 color: layer.locked ? '#9ca3af' : '#ffffff'
               }}
               className={cn(
-                "px-3 py-2.5 rounded-lg flex items-center justify-between transition-all cursor-pointer",
+                "px-3 py-2.5 rounded-lg flex items-center justify-between transition-all",
                 isActive && "shadow-md",
-                layer.locked && "cursor-default"
+                layer.locked ? "cursor-default" : "cursor-pointer"
               )}
             >
               <div className="flex items-center gap-2.5 flex-1 min-w-0">
