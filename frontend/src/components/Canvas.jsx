@@ -34,7 +34,13 @@ export default function Canvas({ canvasEngineRef, activeTool, brushSize, opacity
   }, [brushSize, opacity, color, canvasEngineRef]);
 
   return (
-    <div className="h-full bg-canvas-grid rounded-xl overflow-hidden relative shadow-lg border border-border/10">
+    <div className="h-full bg-white rounded-xl overflow-hidden relative shadow-xl" style={{
+      backgroundImage: `
+        linear-gradient(0deg, rgba(200, 200, 200, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200, 200, 200, 0.05) 1px, transparent 1px)
+      `,
+      backgroundSize: '20px 20px'
+    }}>
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-crosshair"

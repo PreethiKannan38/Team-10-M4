@@ -3,8 +3,6 @@ import MenuBar from './components/MenuBar';
 import Toolbar from './components/Toolbar';
 import LayerPanel from './components/LayerPanel';
 import Canvas from './components/Canvas';
-import StatusBar from './components/StatusBar';
-import ToolOptionsPanel from './components/ToolOptionsPanel';
 
 const App = () => {
   const [activeTool, setActiveTool] = useState('draw');
@@ -44,77 +42,45 @@ const App = () => {
       if (tool === 'draw') canvasEngineRef.current.setDraw();
       else if (tool === 'select') canvasEngineRef.current.setSelect();
       else if (tool === 'eraser') canvasEngineRef.current.setEraser();
-      else if (tool === 'line') canvasEngineRef.current.setLine();
-      else if (tool === 'rectangle') canvasEngineRef.current.setRectangle();
-      else if (tool === 'circle') canvasEngineRef.current.setCircle();
-      else if (tool === 'fill') canvasEngineRef.current.setFill();
-      else if (tool === 'text') canvasEngineRef.current.setText();
-      else if (tool === 'eyedropper') {
-        canvasEngineRef.current.setEyedropper((pickedColor) => {
-          setColor(pickedColor);
-        });
-      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Main Container */}
-      <div className="flex-1 flex flex-col bg-card shadow-2xl overflow-hidden">
-        {/* Menu Bar */}
-        <MenuBar />
+    <div className="min-h-screen bg-gray-900 flex flex-col">
+      {/* Menu Bar - Fixed at top */}
+      <MenuBar />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex relative">
-          {/* Left Toolbar */}
-          <div className="absolute left-4 top-4 z-30">
-            <Toolbar activeTool={activeTool} onToolChange={handleToolChange} />
-          </div>
-
-          {/* Tool Options Panel - Below Toolbar with dynamic spacing */}
-          <div className="absolute left-4 top-[300px] z-20">
-            <ToolOptionsPanel
-              activeTool={activeTool}
-              brushSize={brushSize}
-              opacity={opacity}
-              color={color}
-              onBrushSizeChange={setBrushSize}
-              onOpacityChange={setOpacity}
-              onColorChange={setColor}
-            />
-          </div>
-
-          {/* Canvas Area */}
-          <div className="flex-1 px-40 py-6">
-            <Canvas 
-              canvasEngineRef={canvasEngineRef}
-              activeTool={activeTool}
-              brushSize={brushSize}
-              opacity={opacity}
-              color={color}
-            />
-          </div>
-
-          {/* Right Panel - Layers */}
-          <div className="absolute right-4 top-4 z-20">
-            <LayerPanel
-              layers={layers}
-              activeLayer={activeLayer}
-              onLayerSelect={setActiveLayer}
-              onLayerVisibilityToggle={handleLayerVisibilityToggle}
-              onAddLayer={handleAddLayer}
-            />
-          </div>
+      {/* Main Content Area */}
+      <div className="flex-1 flex relative overflow-hidden">
+        {/* Left Toolbar - Floating */}
+        <div className="absolute left-6 top-6 z-30">
+          <Toolbar activeTool={activeTool} onToolChange={handleToolChange} />
         </div>
 
-        {/* Status Bar */}
-        <StatusBar zoom={100} cursorX={512} cursorY={384} isConnected={true} totalElements={7} />
+        {/* Canvas Area - Center Focus */}
+        <div className="flex-1 px-48 py-8">
+          <Canvas 
+            canvasEngineRef={canvasEngineRef}
+            activeTool={activeTool}
+            brushSize={brushSize}
+            opacity={opacity}
+            color={color}
+          />
+        </div>
+
+        {/* Right Panel - Layers */}
+        <div className="absolute right-6 top-6 z-20">
+          <LayerPanel
+            layers={layers}
+            activeLayer={activeLayer}
+            onLayerSelect={setActiveLayer}
+            onLayerVisibilityToggle={handleLayerVisibilityToggle}
+            onAddLayer={handleAddLayer}
+          />
+        </div>
       </div>
     </div>
   );
 };
 
 export default App;
-
-
-
