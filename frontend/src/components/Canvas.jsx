@@ -34,7 +34,7 @@ export default function Canvas({ canvasEngineRef, activeTool, brushSize, opacity
   }, [brushSize, opacity, color, canvasEngineRef]);
 
   return (
-    <div className="h-full bg-canvas-grid rounded-lg overflow-hidden relative shadow-inner border border-border/20">
+    <div className="h-full bg-canvas-grid rounded-xl overflow-hidden relative shadow-lg border border-border/10">
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-crosshair"
