@@ -1,13 +1,18 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import MenuBar from './components/MenuBar';
 import Toolbar from './components/Toolbar';
 import LayerPanel from './components/LayerPanel';
 import Canvas from './components/Canvas';
 import StatusBar from './components/StatusBar';
+import ToolOptionsPanel from './components/ToolOptionsPanel';
 
 const App = () => {
   const [activeTool, setActiveTool] = useState('draw');
   const [activeLayer, setActiveLayer] = useState('sketch-layer');
+  const [brushSize, setBrushSize] = useState(5);
+  const [opacity, setOpacity] = useState(100);
+  const [color, setColor] = useState('#000000');
+  const canvasEngineRef = useRef(null);
   const [layers, setLayers] = useState([
     { id: 'layer-1', name: 'Layer 1', visible: true, type: 'layer' },
     { id: 'layer-2', name: 'Layer 2', visible: true, type: 'layer' },
@@ -33,6 +38,18 @@ const App = () => {
     setLayers(prev => [newLayer, ...prev.filter(l => l.type !== 'background'), prev.find(l => l.type === 'background')]);
   };
 
+  const handleToolChange = (tool) => {
+    setActiveTool(tool);
+    if (canvasEngineRef.current) {
+      if (tool === 'draw') canvasEngineRef.current.setDraw();
+      else if (tool === 'select') canvasEngineRef.current.setSelect();
+      else if (tool === 'eraser') canvasEngineRef.current.setEraser();
+      else if (tool === 'line') canvasEngineRef.current.setLine();
+      else if (tool === 'rectangle') canvasEngineRef.current.setRectangle();
+      else if (tool === 'circle') canvasEngineRef.current.setCircle();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 flex flex-col">
       {/* Main Container with rounded corners */}
@@ -41,19 +58,38 @@ const App = () => {
         <MenuBar />
 
         {/* Main Content Area */}
-        <div className="flex-1 flex p-4 gap-4 relative">
+        <div className="flex-1 flex relative">
           {/* Left Toolbar */}
-          <div className="absolute left-4 top-4 z-10">
-            <Toolbar activeTool={activeTool} onToolChange={setActiveTool} />
+          <div className="absolute left-4 top-4 z-30">
+            <Toolbar activeTool={activeTool} onToolChange={handleToolChange} />
+          </div>
+
+          {/* Tool Options Panel - Below Toolbar */}
+          <div className="absolute left-4 top-[320px] z-30">
+            <ToolOptionsPanel
+              activeTool={activeTool}
+              brushSize={brushSize}
+              opacity={opacity}
+              color={color}
+              onBrushSizeChange={setBrushSize}
+              onOpacityChange={setOpacity}
+              onColorChange={setColor}
+            />
           </div>
 
           {/* Canvas Area */}
-          <div className="flex-1 ml-32 mr-60">
-            <Canvas />
+          <div className="flex-1 px-36 py-4">
+            <Canvas 
+              canvasEngineRef={canvasEngineRef}
+              activeTool={activeTool}
+              brushSize={brushSize}
+              opacity={opacity}
+              color={color}
+            />
           </div>
 
           {/* Right Panel - Layers */}
-          <div className="absolute right-4 top-4 z-10">
+          <div className="absolute right-4 top-4 z-20">
             <LayerPanel
               layers={layers}
               activeLayer={activeLayer}

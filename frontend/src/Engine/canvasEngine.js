@@ -265,6 +265,9 @@ import { StrokeNode } from './scene/StrokeNode'
 import { DrawTool } from './Tools/DrawTool'
 import { SelectTool } from './Tools/SelectTool'
 import { EraserTool } from './Tools/EraserTool'
+import { LineTool } from './Tools/LineTool'
+import { RectangleTool } from './Tools/RectangleTool'
+import { CircleTool } from './Tools/CircleTool'
 import { setTool, handlePointerDown, handlePointerMove, handlePointerUp } from './ToolManager'
 import { drawSelectionBox } from './scene/selectionBox'
 
@@ -321,6 +324,9 @@ function redraw(box = null) {
   const drawTool   = new DrawTool(ctx, buffer, yStrokes)
   const selectTool = new SelectTool(scene, selectedIds, redraw)
   const eraserTool = new EraserTool(scene, selectedIds, yStrokes)
+  const lineTool = new LineTool(ctx, buffer, yStrokes)
+  const rectangleTool = new RectangleTool(ctx, buffer, yStrokes)
+  const circleTool = new CircleTool(ctx, buffer, yStrokes)
 
   setTool(drawTool)
 
@@ -338,5 +344,14 @@ function redraw(box = null) {
     setDraw: () => setTool(drawTool),
     setSelect: () => setTool(selectTool),
     setEraser: () => setTool(eraserTool),
+    setLine: () => setTool(lineTool),
+    setRectangle: () => setTool(rectangleTool),
+    setCircle: () => setTool(circleTool),
+    setDrawOptions: (options) => {
+      drawTool.setOptions(options);
+      lineTool.setOptions(options);
+      rectangleTool.setOptions(options);
+      circleTool.setOptions(options);
+    },
   }
 }

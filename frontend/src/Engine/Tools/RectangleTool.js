@@ -1,7 +1,7 @@
 import { Tool } from './Tool'
 import * as Y from 'yjs'
 
-export class DrawTool extends Tool {
+export class RectangleTool extends Tool {
   constructor(ctx, buffer, yStrokes) {
     super()
     this.ctx = ctx
@@ -9,7 +9,7 @@ export class DrawTool extends Tool {
     this.bctx = buffer.getContext('2d')
     this.yStrokes = yStrokes
     this.drawing = false
-    this.points = []
+    this.startPoint = null
     this.color = '#000000'
     this.width = 5
     this.opacity = 1.0
@@ -23,48 +23,52 @@ export class DrawTool extends Tool {
 
   onPointerDown(e) {
     this.drawing = true
-    this.points = [{ x: e.x, y: e.y }]
+    this.startPoint = { x: e.x, y: e.y }
   }
 
   onPointerMove(e) {
     if (!this.drawing) return
 
-    this.points.push({ x: e.x, y: e.y })
-
     this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height)
     this.ctx.drawImage(this.buffer, 0, 0)
+
+    const width = e.x - this.startPoint.x
+    const height = e.y - this.startPoint.y
 
     this.ctx.beginPath()
     this.ctx.strokeStyle = this.color
     this.ctx.lineWidth = this.width
     this.ctx.globalAlpha = this.opacity
-    this.ctx.lineCap = 'round'
     this.ctx.lineJoin = 'round'
-    this.ctx.moveTo(this.points[0].x, this.points[0].y)
-    for (let i = 1; i < this.points.length; i++) {
-      this.ctx.lineTo(this.points[i].x, this.points[i].y)
-    }
+    this.ctx.rect(this.startPoint.x, this.startPoint.y, width, height)
     this.ctx.stroke()
     this.ctx.globalAlpha = 1.0
   }
 
-  onPointerUp() {
-    if (!this.drawing || this.points.length < 2) return
+  onPointerUp(e) {
+    if (!this.drawing) return
     this.drawing = false
 
     const stroke = new Y.Map()
     stroke.set('id', crypto.randomUUID())
+    stroke.set('type', 'rectangle')
     stroke.set('color', this.color)
     stroke.set('width', this.width)
     stroke.set('opacity', this.opacity)
-    stroke.set('points', this.points)
+    stroke.set('points', [
+      this.startPoint,
+      { x: e.x, y: this.startPoint.y },
+      { x: e.x, y: e.y },
+      { x: this.startPoint.x, y: e.y },
+      this.startPoint // Close the rectangle
+    ])
 
     this.yStrokes.push([stroke])
-    this.points = []
+    this.startPoint = null
   }
 
   onCancel() {
     this.drawing = false
-    this.points = []
+    this.startPoint = null
   }
 }

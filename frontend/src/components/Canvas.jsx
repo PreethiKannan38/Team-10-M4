@@ -1,14 +1,45 @@
-export default function Canvas({ children }) {
+import { useEffect, useRef } from 'react';
+import { initCanvas } from '../Engine/canvasEngine';
+
+export default function Canvas({ canvasEngineRef, activeTool, brushSize, opacity, color }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const engine = initCanvas(canvasRef.current);
+    if (canvasEngineRef) {
+      canvasEngineRef.current = engine;
+    }
+
+    // Set initial tool
+    if (activeTool === 'draw') engine.setDraw();
+    else if (activeTool === 'select') engine.setSelect();
+    else if (activeTool === 'eraser') engine.setEraser();
+
+    return () => {
+      // Cleanup if needed
+    };
+  }, []);
+
+  useEffect(() => {
+    // Update draw tool options when they change
+    if (canvasEngineRef?.current?.setDrawOptions) {
+      canvasEngineRef.current.setDrawOptions({
+        color: color,
+        width: brushSize,
+        opacity: opacity / 100,
+      });
+    }
+  }, [brushSize, opacity, color, canvasEngineRef]);
+
   return (
-    <div className="flex-1 bg-canvas-grid rounded-lg overflow-hidden relative shadow-inner">
-      {/* Canvas content placeholder */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        {children || (
-          <div className="text-muted-foreground/30 text-lg font-medium select-none">
-            Start drawing...
-          </div>
-        )}
-      </div>
+    <div className="h-full bg-canvas-grid rounded-lg overflow-hidden relative shadow-inner border border-border/20">
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full cursor-crosshair"
+        style={{ display: 'block' }}
+      />
     </div>
   );
 }

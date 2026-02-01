@@ -1,4 +1,4 @@
-import { Pencil, MousePointer2, Eraser, ChevronDown } from 'lucide-react';
+import { Pencil, MousePointer2, Eraser, Square, Circle, Type, Minus, ChevronDown, Pipette, PaintBucket } from 'lucide-react';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -6,11 +6,17 @@ const tools = [
   { id: 'draw', label: 'Draw', icon: Pencil },
   { id: 'select', label: 'Select', icon: MousePointer2 },
   { id: 'eraser', label: 'Erase', icon: Eraser },
+  { id: 'line', label: 'Line', icon: Minus },
+  { id: 'rectangle', label: 'Rectangle', icon: Square },
+  { id: 'circle', label: 'Circle', icon: Circle },
+  { id: 'text', label: 'Text', icon: Type },
+  { id: 'eyedropper', label: 'Eyedropper', icon: Pipette },
+  { id: 'fill', label: 'Fill', icon: PaintBucket },
 ];
 
 export default function Toolbar({ activeTool = 'draw', onToolChange }) {
   return (
-    <div className="bg-toolbar rounded-xl shadow-2xl p-2 flex flex-col gap-1 w-[120px] border border-border/30">
+    <div className="bg-toolbar rounded-xl shadow-2xl p-2 flex flex-col gap-1 w-[120px] border border-border/30 max-h-[680px] overflow-y-auto">
       {/* macOS-style window controls */}
       <div className="flex items-center gap-1.5 px-2 py-2 mb-1">
         <div className="w-2.5 h-2.5 rounded-full opacity-80 bg-destructive" />
@@ -34,6 +40,7 @@ export default function Toolbar({ activeTool = 'draw', onToolChange }) {
                 ? "bg-primary text-primary-foreground shadow-md" 
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground"
             )}
+            title={tool.label}
           >
             <Icon className="w-4 h-4" strokeWidth={isActive ? 2.5 : 2} />
             <span className="text-sm font-medium">{tool.label}</span>

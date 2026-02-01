@@ -1,4 +1,4 @@
-import { Link2, Download, LogOut, ChevronDown } from 'lucide-react';
+import { Link2, Download, LogOut, ChevronDown, Save, Undo, Redo, Menu } from 'lucide-react';
 
 export default function MenuBar({ 
   userName = "Manu Santhosh", 
@@ -7,14 +7,30 @@ export default function MenuBar({
 }) {
   return (
     <header className="h-14 bg-header flex items-center justify-between px-4 rounded-t-xl border-b border-border/30">
-      {/* Left: Logo */}
-      <div className="flex items-center gap-2.5">
-        <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center shadow-sm">
-          <svg className="w-4 h-4 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-          </svg>
+      {/* Left: Logo & Menu */}
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center shadow-sm">
+            <svg className="w-4 h-4 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+            </svg>
+          </div>
+          <span className="text-foreground font-semibold text-base tracking-tight">DrawSpace</span>
         </div>
-        <span className="text-foreground font-semibold text-base tracking-tight">DrawSpace</span>
+        
+        {/* Quick Action Buttons */}
+        <div className="flex items-center gap-1 ml-2">
+          <button className="p-2 hover:bg-secondary rounded-md transition-colors" title="Undo">
+            <Undo className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <button className="p-2 hover:bg-secondary rounded-md transition-colors" title="Redo">
+            <Redo className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <div className="w-px h-5 bg-border mx-1" />
+          <button className="p-2 hover:bg-secondary rounded-md transition-colors" title="Save">
+            <Save className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
       {/* Center: User Profile */}
