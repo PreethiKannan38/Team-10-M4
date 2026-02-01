@@ -7,9 +7,6 @@ import Canvas from './components/Canvas';
 const App = () => {
   const [activeTool, setActiveTool] = useState('draw');
   const [activeLayer, setActiveLayer] = useState('sketch-layer');
-  const [brushSize, setBrushSize] = useState(5);
-  const [opacity, setOpacity] = useState(100);
-  const [color, setColor] = useState('#000000');
   const canvasEngineRef = useRef(null);
   const [layers, setLayers] = useState([
     { id: 'layer-1', name: 'Layer 1', visible: true, type: 'layer' },
@@ -62,9 +59,6 @@ const App = () => {
           <Canvas 
             canvasEngineRef={canvasEngineRef}
             activeTool={activeTool}
-            brushSize={brushSize}
-            opacity={opacity}
-            color={color}
           />
         </div>
 

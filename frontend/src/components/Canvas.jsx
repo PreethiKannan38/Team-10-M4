@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { initCanvas } from '../Engine/canvasEngine';
 
-export default function Canvas({ canvasEngineRef, activeTool, brushSize, opacity, color }) {
+export default function Canvas({ canvasEngineRef, activeTool }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -20,18 +20,8 @@ export default function Canvas({ canvasEngineRef, activeTool, brushSize, opacity
     return () => {
       // Cleanup if needed
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    // Update draw tool options when they change
-    if (canvasEngineRef?.current?.setDrawOptions) {
-      canvasEngineRef.current.setDrawOptions({
-        color: color,
-        width: brushSize,
-        opacity: opacity / 100,
-      });
-    }
-  }, [brushSize, opacity, color, canvasEngineRef]);
 
   return (
     <div className="h-full rounded-xl overflow-hidden relative shadow-xl" style={{
