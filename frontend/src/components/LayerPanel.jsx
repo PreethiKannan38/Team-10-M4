@@ -1,4 +1,4 @@
-import { Eye, Check, Lock, Pencil } from 'lucide-react';
+import { Eye, EyeOff, Lock, Plus } from 'lucide-react';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -18,27 +18,22 @@ export default function LayerPanel({
 }) {
   const displayLayers = layers.length > 0 ? layers : defaultLayers;
 
-  const getLayerIcon = (layer) => {
-    if (layer.locked) return <Lock className="w-3.5 h-3.5" />;
-    if (layer.type === 'sketch') return <Pencil className="w-3.5 h-3.5" />;
-    return <Eye className="w-3.5 h-3.5 opacity-60" />;
-  };
-
   return (
-    <div className="w-60 bg-panel rounded-xl shadow-2xl flex flex-col border border-border/20 overflow-hidden">
+    <div className="w-64 bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-2xl flex flex-col border border-gray-700/50 overflow-hidden">
       {/* Header */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-border/30 bg-toolbar/50">
-        <span className="text-foreground font-semibold text-sm tracking-wide">Layers</span>
+      <div className="px-4 py-3 flex items-center justify-between border-b border-gray-700/50">
+        <span className="text-white font-semibold text-sm">Layers</span>
         <button 
           onClick={onAddLayer}
-          className="px-3.5 py-1.5 bg-accent/10 text-accent text-xs rounded-lg hover:bg-accent hover:text-accent-foreground transition-all font-medium border border-accent/20 shadow-sm hover:shadow-md"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-full hover:bg-blue-700 transition-all font-medium shadow-md"
         >
-          Add +
+          <Plus className="w-3.5 h-3.5" />
+          Add Layer
         </button>
       </div>
 
       {/* Layer List */}
-      <div className="flex-1 p-2.5 space-y-1.5 overflow-y-auto max-h-80">
+      <div className="flex-1 p-3 space-y-2 overflow-y-auto max-h-96">
         {displayLayers.map((layer) => {
           const isActive = activeLayer === layer.id;
           
@@ -47,25 +42,20 @@ export default function LayerPanel({
               key={layer.id}
               onClick={() => !layer.locked && onLayerSelect?.(layer.id)}
               className={cn(
-                "h-12 px-3.5 rounded-lg flex items-center justify-between transition-all border",
+                "px-3 py-2.5 rounded-lg flex items-center justify-between transition-all",
                 layer.locked 
-                  ? "bg-transparent text-muted-foreground cursor-default border-border/10" 
+                  ? "bg-gray-900/50 text-gray-500 cursor-default" 
                   : isActive
-                    ? "bg-accent text-accent-foreground cursor-pointer shadow-lg shadow-accent/20 border-accent/30 scale-[1.02]"
-                    : "bg-secondary/30 text-foreground hover:bg-secondary/50 cursor-pointer border-border/20 hover:border-border/40 hover:shadow-md"
+                    ? "bg-blue-600 text-white cursor-pointer shadow-md"
+                    : "bg-gray-700/50 text-gray-200 hover:bg-gray-700 cursor-pointer"
               )}
             >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={cn(
-                  "transition-all",
-                  isActive && !layer.locked && "text-accent-foreground"
-                )}>
-                  {getLayerIcon(layer)}
-                </div>
+              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                {layer.locked && <Lock className="w-4 h-4 flex-shrink-0" />}
                 <span className="text-sm font-medium truncate">{layer.name}</span>
               </div>
 
-              <div className="flex items-center gap-2.5 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Visibility Toggle */}
                 {!layer.locked && (
                   <button
@@ -74,33 +64,19 @@ export default function LayerPanel({
                       onLayerVisibilityToggle?.(layer.id);
                     }}
                     className={cn(
-                      "p-1.5 rounded-md transition-all",
+                      "p-1 rounded transition-all",
                       isActive 
-                        ? "hover:bg-accent-foreground/10" 
-                        : "hover:bg-muted/50"
+                        ? "hover:bg-blue-700" 
+                        : "hover:bg-gray-600"
                     )}
                     title={layer.visible ? 'Hide layer' : 'Show layer'}
                   >
-                    <Eye className={cn("w-4 h-4 transition-opacity", !layer.visible && "opacity-30")} />
+                    {layer.visible ? (
+                      <Eye className="w-4 h-4" />
+                    ) : (
+                      <EyeOff className="w-4 h-4 opacity-40" />
+                    )}
                   </button>
-                )}
-
-                {/* Selection Check */}
-                {!layer.locked && (
-                  <Check 
-                    className={cn(
-                      "w-4 h-4 transition-all",
-                      layer.visible ? "opacity-100" : "opacity-20",
-                      isActive && "drop-shadow-sm"
-                    )} 
-                  />
-                )}
-
-                {/* Lock indicator for background */}
-                {layer.locked && (
-                  <div className="w-4 h-4 flex items-center justify-center opacity-40">
-                    <div className="w-2 h-2 rounded-full bg-muted-foreground/50" />
-                  </div>
                 )}
               </div>
             </div>

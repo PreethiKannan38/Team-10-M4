@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { initCanvas } from '../Engine/canvasEngine';
 
-export default function Canvas({ canvasEngineRef, activeTool, brushSize, opacity, color }) {
+export default function Canvas({ canvasEngineRef, activeTool }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -20,21 +20,19 @@ export default function Canvas({ canvasEngineRef, activeTool, brushSize, opacity
     return () => {
       // Cleanup if needed
     };
+  // Empty dependency array intentional - canvas should only initialize once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    // Update draw tool options when they change
-    if (canvasEngineRef?.current?.setDrawOptions) {
-      canvasEngineRef.current.setDrawOptions({
-        color: color,
-        width: brushSize,
-        opacity: opacity / 100,
-      });
-    }
-  }, [brushSize, opacity, color, canvasEngineRef]);
-
   return (
-    <div className="h-full bg-canvas-grid rounded-xl overflow-hidden relative shadow-lg border border-border/10">
+    <div className="h-full rounded-xl overflow-hidden relative shadow-xl" style={{
+      backgroundColor: '#ffffff',
+      backgroundImage: `
+        linear-gradient(0deg, rgba(200, 200, 200, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200, 200, 200, 0.1) 1px, transparent 1px)
+      `,
+      backgroundSize: '20px 20px'
+    }}>
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-crosshair"
