@@ -2,23 +2,29 @@ export class StrokeNode {
   constructor(stroke) {
     this.id = stroke.get('id')
     this.points = stroke.get('points')
-    this.color = stroke.get('color')
-    this.width = stroke.get('width')
+    this.color = stroke.get('color') || '#000000'
+    this.width = stroke.get('width') || 2
+    this.opacity = stroke.get('opacity') || 1.0
     this.bounds = computeBounds(this.points)
   }
 
   draw(ctx, selected = false) {
     if (this.points.length < 2) return
 
+    ctx.save()
     ctx.beginPath()
     ctx.strokeStyle = selected ? 'rgba(0,120,255,0.8)' : this.color
     ctx.lineWidth = selected ? this.width + 2 : this.width
+    ctx.globalAlpha = selected ? 1.0 : this.opacity
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
     ctx.moveTo(this.points[0].x, this.points[0].y)
 
     for (let i = 1; i < this.points.length; i++) {
       ctx.lineTo(this.points[i].x, this.points[i].y)
     }
     ctx.stroke()
+    ctx.restore()
   }
 }
 

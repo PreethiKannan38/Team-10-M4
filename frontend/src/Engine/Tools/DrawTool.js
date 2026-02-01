@@ -10,6 +10,15 @@ export class DrawTool extends Tool {
     this.yStrokes = yStrokes
     this.drawing = false
     this.points = []
+    this.color = '#000000'
+    this.width = 5
+    this.opacity = 1.0
+  }
+
+  setOptions(options) {
+    if (options.color) this.color = options.color;
+    if (options.width) this.width = options.width;
+    if (options.opacity) this.opacity = options.opacity;
   }
 
   onPointerDown(e) {
@@ -26,11 +35,17 @@ export class DrawTool extends Tool {
     this.ctx.drawImage(this.buffer, 0, 0)
 
     this.ctx.beginPath()
+    this.ctx.strokeStyle = this.color
+    this.ctx.lineWidth = this.width
+    this.ctx.globalAlpha = this.opacity
+    this.ctx.lineCap = 'round'
+    this.ctx.lineJoin = 'round'
     this.ctx.moveTo(this.points[0].x, this.points[0].y)
     for (let i = 1; i < this.points.length; i++) {
       this.ctx.lineTo(this.points[i].x, this.points[i].y)
     }
     this.ctx.stroke()
+    this.ctx.globalAlpha = 1.0
   }
 
   onPointerUp() {
@@ -39,8 +54,9 @@ export class DrawTool extends Tool {
 
     const stroke = new Y.Map()
     stroke.set('id', crypto.randomUUID())
-    stroke.set('color', 'black')
-    stroke.set('width', 2)
+    stroke.set('color', this.color)
+    stroke.set('width', this.width)
+    stroke.set('opacity', this.opacity)
     stroke.set('points', this.points)
 
     this.yStrokes.push([stroke])

@@ -338,5 +338,6 @@ function redraw(box = null) {
     setDraw: () => setTool(drawTool),
     setSelect: () => setTool(selectTool),
     setEraser: () => setTool(eraserTool),
+    setDrawOptions: (options) => drawTool.setOptions(options),
   }
 }
