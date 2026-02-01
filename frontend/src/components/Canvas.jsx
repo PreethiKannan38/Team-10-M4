@@ -34,10 +34,11 @@ export default function Canvas({ canvasEngineRef, activeTool, brushSize, opacity
   }, [brushSize, opacity, color, canvasEngineRef]);
 
   return (
-    <div className="h-full bg-white rounded-xl overflow-hidden relative shadow-xl" style={{
+    <div className="h-full rounded-xl overflow-hidden relative shadow-xl" style={{
+      backgroundColor: '#ffffff',
       backgroundImage: `
-        linear-gradient(0deg, rgba(200, 200, 200, 0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(200, 200, 200, 0.05) 1px, transparent 1px)
+        linear-gradient(0deg, rgba(200, 200, 200, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200, 200, 200, 0.1) 1px, transparent 1px)
       `,
       backgroundSize: '20px 20px'
     }}>
