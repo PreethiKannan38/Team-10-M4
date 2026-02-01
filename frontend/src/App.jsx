@@ -44,6 +44,9 @@ const App = () => {
       if (tool === 'draw') canvasEngineRef.current.setDraw();
       else if (tool === 'select') canvasEngineRef.current.setSelect();
       else if (tool === 'eraser') canvasEngineRef.current.setEraser();
+      else if (tool === 'line') canvasEngineRef.current.setLine();
+      else if (tool === 'rectangle') canvasEngineRef.current.setRectangle();
+      else if (tool === 'circle') canvasEngineRef.current.setCircle();
     }
   };
 
@@ -57,12 +60,12 @@ const App = () => {
         {/* Main Content Area */}
         <div className="flex-1 flex relative">
           {/* Left Toolbar */}
-          <div className="absolute left-4 top-4 z-20">
+          <div className="absolute left-4 top-4 z-30">
             <Toolbar activeTool={activeTool} onToolChange={handleToolChange} />
           </div>
 
           {/* Tool Options Panel - Below Toolbar */}
-          <div className="absolute left-4 top-[320px] z-20">
+          <div className="absolute left-4 top-[320px] z-30">
             <ToolOptionsPanel
               activeTool={activeTool}
               brushSize={brushSize}
