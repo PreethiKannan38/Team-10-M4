@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Eye, EyeOff, Lock, Plus } from 'lucide-react';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -17,6 +18,7 @@ export default function LayerPanel({
   onAddLayer,
 }) {
   const displayLayers = layers.length > 0 ? layers : defaultLayers;
+  const [hoveredLayer, setHoveredLayer] = useState(null);
 
   return (
     <div 
@@ -42,17 +44,23 @@ export default function LayerPanel({
       <div className="flex-1 p-3 space-y-2 overflow-y-auto max-h-96">
         {displayLayers.map((layer) => {
           const isActive = activeLayer === layer.id;
+          const isHovered = hoveredLayer === layer.id;
+          
+          const getBackgroundColor = () => {
+            if (layer.locked) return '#1a1a1a';
+            if (isActive) return '#2563eb';
+            if (isHovered) return '#4b5563';
+            return '#374151';
+          };
           
           return (
             <div
               key={layer.id}
               onClick={() => !layer.locked && onLayerSelect?.(layer.id)}
+              onMouseEnter={() => !layer.locked && !isActive && setHoveredLayer(layer.id)}
+              onMouseLeave={() => setHoveredLayer(null)}
               style={{
-                backgroundColor: layer.locked 
-                  ? '#1a1a1a'
-                  : isActive 
-                    ? '#2563eb'
-                    : '#374151',
+                backgroundColor: getBackgroundColor(),
                 color: layer.locked ? '#9ca3af' : '#ffffff'
               }}
               className={cn(
@@ -60,16 +68,6 @@ export default function LayerPanel({
                 isActive && "shadow-md",
                 layer.locked && "cursor-default"
               )}
-              onMouseEnter={(e) => {
-                if (!layer.locked && !isActive) {
-                  e.currentTarget.style.backgroundColor = '#4b5563';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!layer.locked && !isActive) {
-                  e.currentTarget.style.backgroundColor = '#374151';
-                }
-              }}
             >
               <div className="flex items-center gap-2.5 flex-1 min-w-0">
                 {layer.locked && <Lock className="w-4 h-4 flex-shrink-0" />}
