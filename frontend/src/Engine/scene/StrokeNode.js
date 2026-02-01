@@ -2,7 +2,7 @@ export class StrokeNode {
   constructor(stroke) {
     this.id = stroke.get('id')
     this.type = stroke.get('type') || 'stroke'
-    this.points = stroke.get('points')
+    this.points = stroke.get('points') || []
     this.color = stroke.get('color') || '#000000'
     this.width = stroke.get('width') || 2
     this.opacity = stroke.get('opacity') || 1.0
@@ -10,14 +10,23 @@ export class StrokeNode {
     // For text type
     this.text = stroke.get('text')
     this.fontSize = stroke.get('fontSize') || 24
-    this.x = stroke.get('x')
-    this.y = stroke.get('y')
+    this.x = stroke.get('x') || 0
+    this.y = stroke.get('y') || 0
     
     // For fill type
     this.fillWidth = stroke.get('width')
     this.fillHeight = stroke.get('height')
     
-    this.bounds = computeBounds(this.points)
+    // Compute bounds based on type
+    if (this.type === 'text') {
+      // Approximate bounds for text
+      const textWidth = this.text ? this.text.length * this.fontSize * 0.6 : 0;
+      this.bounds = { x: this.x, y: this.y - this.fontSize, w: textWidth, h: this.fontSize };
+    } else if (this.type === 'fill') {
+      this.bounds = { x: this.x, y: this.y, w: this.fillWidth, h: this.fillHeight };
+    } else {
+      this.bounds = computeBounds(this.points);
+    }
   }
 
   draw(ctx, selected = false) {

@@ -330,17 +330,11 @@ function redraw(box = null) {
   const lineTool = new LineTool(ctx, buffer, yStrokes)
   const rectangleTool = new RectangleTool(ctx, buffer, yStrokes)
   const circleTool = new CircleTool(ctx, buffer, yStrokes)
-  
-  // Store color change callback for eyedropper
-  let colorChangeCallback = null;
-  
   const fillTool = new FillTool(ctx, buffer, yStrokes)
   const textTool = new TextTool(ctx, buffer, yStrokes)
-  const eyedropperTool = new EyedropperTool(ctx, buffer, (color) => {
-    if (colorChangeCallback) {
-      colorChangeCallback(color);
-    }
-  })
+  
+  // Eyedropper tool will be initialized with callback when needed
+  let eyedropperTool = null;
 
   setTool(drawTool)
 
@@ -364,7 +358,8 @@ function redraw(box = null) {
     setFill: () => setTool(fillTool),
     setText: () => setTool(textTool),
     setEyedropper: (callback) => {
-      colorChangeCallback = callback;
+      // Create eyedropper tool with callback each time it's activated
+      eyedropperTool = new EyedropperTool(ctx, buffer, callback);
       setTool(eyedropperTool);
     },
     setDrawOptions: (options) => {

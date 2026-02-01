@@ -19,7 +19,9 @@ export class TextTool extends Tool {
   }
 
   onPointerDown(e) {
-    // Simple text implementation - prompts for text and creates a text stroke
+    // Note: Using prompt() for simplicity. In a production app, this should be
+    // replaced with a proper accessible text input UI component with keyboard
+    // navigation and screen reader support.
     const text = prompt('Enter text:');
     if (!text) return;
 
