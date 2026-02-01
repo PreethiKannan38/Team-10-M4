@@ -74,9 +74,9 @@ export default function ToolOptionsPanel({
   }
 
   return (
-    <div className="bg-toolbar rounded-xl shadow-2xl border border-border/30 w-[280px] p-4">
+    <div className="bg-toolbar rounded-xl shadow-2xl border border-border/30 w-[240px] p-3">
       {/* Tool Title */}
-      <div className="mb-4">
+      <div className="mb-3">
         <h3 className="text-xs font-semibold text-foreground uppercase tracking-widest flex items-center gap-2">
           <Palette className="w-3.5 h-3.5" />
           {config.title}
@@ -84,24 +84,24 @@ export default function ToolOptionsPanel({
       </div>
 
       {/* Options Container */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {/* Brush Size Slider */}
         {config.options.includes('size') && (
           <div>
-            <label className="text-xs text-muted-foreground mb-2 block font-medium">Size</label>
+            <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Size</label>
             <input
               type="range"
               min="1"
               max="50"
               value={brushSize}
               onChange={(e) => onBrushSizeChange?.(parseInt(e.target.value))}
-              className="w-full accent-primary"
+              className="w-full accent-primary h-2 cursor-pointer"
               aria-label="Brush size"
             />
             <div className="flex justify-between items-center mt-1">
               <span className="text-xs text-foreground font-medium">{brushSize}px</span>
               <div 
-                className="rounded-full bg-primary" 
+                className="rounded-full bg-primary shadow-sm" 
                 style={{ 
                   width: `${Math.max(8, Math.min(brushSize, 20))}px`, 
                   height: `${Math.max(8, Math.min(brushSize, 20))}px` 
@@ -114,14 +114,14 @@ export default function ToolOptionsPanel({
         {/* Opacity Slider */}
         {config.options.includes('opacity') && (
           <div>
-            <label className="text-xs text-muted-foreground mb-2 block font-medium">Opacity</label>
+            <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Opacity</label>
             <input
               type="range"
               min="0"
               max="100"
               value={opacity}
               onChange={(e) => onOpacityChange?.(parseInt(e.target.value))}
-              className="w-full accent-primary"
+              className="w-full accent-primary h-2 cursor-pointer"
               aria-label="Opacity"
             />
             <span className="text-xs text-foreground mt-1 block font-medium">{opacity}%</span>
@@ -131,17 +131,17 @@ export default function ToolOptionsPanel({
         {/* Color Picker */}
         {config.options.includes('color') && (
           <div>
-            <label className="text-xs text-muted-foreground mb-2 block font-medium">Color</label>
-            <div className="grid grid-cols-5 gap-2 mb-3">
+            <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Color</label>
+            <div className="grid grid-cols-5 gap-1.5 mb-2">
               {colorPresets.map((preset) => (
                 <button
                   key={preset}
                   onClick={() => onColorChange?.(preset)}
-                  className="w-10 h-10 rounded-lg border-2 transition-all hover:scale-110 shadow-sm"
+                  className="w-9 h-9 rounded-lg border-2 transition-all hover:scale-110 shadow-md"
                   style={{ 
                     backgroundColor: preset, 
                     borderColor: color === preset ? 'hsl(var(--primary))' : 'hsl(var(--border))',
-                    boxShadow: color === preset ? '0 0 0 2px hsl(var(--primary) / 0.3)' : 'none'
+                    boxShadow: color === preset ? '0 0 0 2px hsl(var(--primary) / 0.4)' : '0 1px 3px rgba(0,0,0,0.3)'
                   }}
                   title={preset}
                   aria-label={`Color: ${preset}`}
@@ -153,14 +153,14 @@ export default function ToolOptionsPanel({
                 type="color"
                 value={color}
                 onChange={(e) => onColorChange?.(e.target.value)}
-                className="w-12 h-10 rounded-lg border-2 border-border cursor-pointer"
+                className="w-10 h-9 rounded-lg border-2 border-border cursor-pointer"
                 aria-label="Custom color picker"
               />
               <input
                 type="text"
                 value={color}
                 onChange={(e) => onColorChange?.(e.target.value)}
-                className="flex-1 px-3 py-2 bg-secondary border border-border rounded-lg text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex-1 px-2 py-1.5 bg-secondary border border-border rounded-lg text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="#000000"
               />
             </div>

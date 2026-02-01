@@ -1,11 +1,15 @@
-import { Pencil, MousePointer2, Eraser, Square, Circle, Type, Minus, ChevronDown, Pipette, PaintBucket } from 'lucide-react';
+import { useState } from 'react';
+import { Pencil, MousePointer2, Eraser, Square, Circle, Type, Minus, ChevronDown, ChevronUp, Pipette, PaintBucket } from 'lucide-react';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-const tools = [
+const primaryTools = [
   { id: 'draw', label: 'Draw', icon: Pencil },
   { id: 'select', label: 'Select', icon: MousePointer2 },
   { id: 'eraser', label: 'Erase', icon: Eraser },
+];
+
+const secondaryTools = [
   { id: 'line', label: 'Line', icon: Minus },
   { id: 'rectangle', label: 'Rectangle', icon: Square },
   { id: 'circle', label: 'Circle', icon: Circle },
@@ -15,8 +19,32 @@ const tools = [
 ];
 
 export default function Toolbar({ activeTool = 'draw', onToolChange }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const renderToolButton = (tool) => {
+    const Icon = tool.icon;
+    const isActive = activeTool === tool.id;
+    
+    return (
+      <button
+        key={tool.id}
+        onClick={() => onToolChange?.(tool.id)}
+        className={cn(
+          "flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all text-left",
+          isActive 
+            ? "bg-primary text-primary-foreground shadow-md" 
+            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+        )}
+        title={tool.label}
+      >
+        <Icon className="w-4 h-4" strokeWidth={isActive ? 2.5 : 2} />
+        <span className="text-sm font-medium">{tool.label}</span>
+      </button>
+    );
+  };
+
   return (
-    <div className="bg-toolbar rounded-xl shadow-2xl p-2 flex flex-col gap-1 w-[120px] border border-border/30 max-h-[680px] overflow-y-auto">
+    <div className="bg-toolbar rounded-xl shadow-2xl p-2 flex flex-col gap-1 w-[120px] border border-border/30">
       {/* macOS-style window controls */}
       <div className="flex items-center gap-1.5 px-2 py-2 mb-1">
         <div className="w-2.5 h-2.5 rounded-full opacity-80 bg-destructive" />
@@ -25,32 +53,19 @@ export default function Toolbar({ activeTool = 'draw', onToolChange }) {
         <div className="flex-1 h-0.5 bg-muted/50 rounded ml-2" />
       </div>
 
-      {/* Tool buttons */}
-      {tools.map((tool) => {
-        const Icon = tool.icon;
-        const isActive = activeTool === tool.id;
-        
-        return (
-          <button
-            key={tool.id}
-            onClick={() => onToolChange?.(tool.id)}
-            className={cn(
-              "flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all text-left",
-              isActive 
-                ? "bg-primary text-primary-foreground shadow-md" 
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-            )}
-            title={tool.label}
-          >
-            <Icon className="w-4 h-4" strokeWidth={isActive ? 2.5 : 2} />
-            <span className="text-sm font-medium">{tool.label}</span>
-          </button>
-        );
-      })}
+      {/* Primary Tool buttons */}
+      {primaryTools.map(renderToolButton)}
 
-      {/* Expand button */}
-      <button className="mt-1 pt-2 border-t border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors py-2">
-        <ChevronDown className="w-4 h-4" />
+      {/* Secondary tools (shown when expanded) */}
+      {isExpanded && secondaryTools.map(renderToolButton)}
+
+      {/* Expand/Collapse button */}
+      <button 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="mt-1 pt-2 border-t border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors py-2"
+        title={isExpanded ? "Show less tools" : "Show more tools"}
+      >
+        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
     </div>
   );

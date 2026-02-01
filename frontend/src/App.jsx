@@ -47,6 +47,13 @@ const App = () => {
       else if (tool === 'line') canvasEngineRef.current.setLine();
       else if (tool === 'rectangle') canvasEngineRef.current.setRectangle();
       else if (tool === 'circle') canvasEngineRef.current.setCircle();
+      else if (tool === 'fill') canvasEngineRef.current.setFill();
+      else if (tool === 'text') canvasEngineRef.current.setText();
+      else if (tool === 'eyedropper') {
+        canvasEngineRef.current.setEyedropper((pickedColor) => {
+          setColor(pickedColor);
+        });
+      }
     }
   };
 
@@ -64,8 +71,8 @@ const App = () => {
             <Toolbar activeTool={activeTool} onToolChange={handleToolChange} />
           </div>
 
-          {/* Tool Options Panel - Below Toolbar */}
-          <div className="absolute left-4 top-[320px] z-30">
+          {/* Tool Options Panel - Below Toolbar with dynamic spacing */}
+          <div className="absolute left-4 top-[280px] z-20">
             <ToolOptionsPanel
               activeTool={activeTool}
               brushSize={brushSize}
@@ -78,7 +85,7 @@ const App = () => {
           </div>
 
           {/* Canvas Area */}
-          <div className="flex-1 px-36 py-4">
+          <div className="flex-1 px-40 py-4">
             <Canvas 
               canvasEngineRef={canvasEngineRef}
               activeTool={activeTool}
