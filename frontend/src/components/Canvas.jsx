@@ -20,6 +20,7 @@ export default function Canvas({ canvasEngineRef, activeTool }) {
     return () => {
       // Cleanup if needed
     };
+  // Empty dependency array intentional - canvas should only initialize once on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
