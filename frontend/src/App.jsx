@@ -71,8 +71,8 @@ const App = () => {
             <Toolbar activeTool={activeTool} onToolChange={handleToolChange} />
           </div>
 
-          {/* Tool Options Panel - Below Toolbar */}
-          <div className="absolute left-4 top-[260px] z-30">
+          {/* Tool Options Panel - Below Toolbar with dynamic spacing */}
+          <div className="absolute left-4 top-[280px] z-20">
             <ToolOptionsPanel
               activeTool={activeTool}
               brushSize={brushSize}
