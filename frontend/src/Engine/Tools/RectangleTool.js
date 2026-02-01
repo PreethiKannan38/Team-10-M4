@@ -16,9 +16,9 @@ export class RectangleTool extends Tool {
   }
 
   setOptions(options) {
-    if (options.color) this.color = options.color;
-    if (options.width) this.width = options.width;
-    if (options.opacity) this.opacity = options.opacity;
+    if (options.color !== undefined) this.color = options.color;
+    if (options.width !== undefined) this.width = options.width;
+    if (options.opacity !== undefined) this.opacity = options.opacity;
   }
 
   onPointerDown(e) {
@@ -39,7 +39,7 @@ export class RectangleTool extends Tool {
     this.ctx.strokeStyle = this.color
     this.ctx.lineWidth = this.width
     this.ctx.globalAlpha = this.opacity
-    this.ctx.lineJoin = 'miter'
+    this.ctx.lineJoin = 'round'
     this.ctx.rect(this.startPoint.x, this.startPoint.y, width, height)
     this.ctx.stroke()
     this.ctx.globalAlpha = 1.0

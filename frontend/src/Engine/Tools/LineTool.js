@@ -16,9 +16,9 @@ export class LineTool extends Tool {
   }
 
   setOptions(options) {
-    if (options.color) this.color = options.color;
-    if (options.width) this.width = options.width;
-    if (options.opacity) this.opacity = options.opacity;
+    if (options.color !== undefined) this.color = options.color;
+    if (options.width !== undefined) this.width = options.width;
+    if (options.opacity !== undefined) this.opacity = options.opacity;
   }
 
   onPointerDown(e) {
