@@ -65,7 +65,7 @@ const App = () => {
           </div>
 
           {/* Tool Options Panel - Below Toolbar */}
-          <div className="absolute left-4 top-[320px] z-30">
+          <div className="absolute left-4 top-[260px] z-30">
             <ToolOptionsPanel
               activeTool={activeTool}
               brushSize={brushSize}
@@ -78,7 +78,7 @@ const App = () => {
           </div>
 
           {/* Canvas Area */}
-          <div className="flex-1 px-36 py-4">
+          <div className="flex-1 px-40 py-4">
             <Canvas 
               canvasEngineRef={canvasEngineRef}
               activeTool={activeTool}
