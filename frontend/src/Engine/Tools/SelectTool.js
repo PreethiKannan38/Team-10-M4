@@ -59,7 +59,7 @@ export class SelectTool extends Tool {
     this.redraw(this.box)
   }
 
-  onPointerUp(e) {
+  onPointerUp() {
     if (!this.box) {
       this.reset()
       return
