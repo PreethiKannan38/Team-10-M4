@@ -58,9 +58,9 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 flex flex-col">
-      {/* Main Container with rounded corners */}
-      <div className="flex-1 flex flex-col bg-card rounded-xl shadow-2xl overflow-hidden border border-border/30">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col bg-card shadow-2xl overflow-hidden">
         {/* Menu Bar */}
         <MenuBar />
 
@@ -72,7 +72,7 @@ const App = () => {
           </div>
 
           {/* Tool Options Panel - Below Toolbar with dynamic spacing */}
-          <div className="absolute left-4 top-[280px] z-20">
+          <div className="absolute left-4 top-[300px] z-20">
             <ToolOptionsPanel
               activeTool={activeTool}
               brushSize={brushSize}
@@ -85,7 +85,7 @@ const App = () => {
           </div>
 
           {/* Canvas Area */}
-          <div className="flex-1 px-40 py-4">
+          <div className="flex-1 px-40 py-6">
             <Canvas 
               canvasEngineRef={canvasEngineRef}
               activeTool={activeTool}
