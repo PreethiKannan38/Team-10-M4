@@ -23,7 +23,7 @@ npm run dev
 
 ### Backend
 ```bash
-cd Design_Deck/server
+cd server
 npm install
 npm install y-websocket ws
 node server.js
