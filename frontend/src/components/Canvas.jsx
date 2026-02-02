@@ -1,43 +1,83 @@
 import { useEffect, useRef } from 'react';
-import { initCanvas } from '../Engine/canvasEngine';
+import { CanvasEngineController } from '../Engine/CanvasEngineController';
 
-export default function Canvas({ canvasEngineRef, activeTool }) {
+export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, activeLayer, fillEnabled }) {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !containerRef.current) return;
 
-    const engine = initCanvas(canvasRef.current);
-    if (canvasEngineRef) {
-      canvasEngineRef.current = engine;
-    }
+    const resizeCanvas = () => {
+      const { width, height } = containerRef.current.getBoundingClientRect();
+      canvasRef.current.width = width;
+      canvasRef.current.height = height;
+      if (canvasEngineRef?.current) {
+        canvasEngineRef.current.render();
+      }
+    };
 
-    // Set initial tool
-    if (activeTool === 'draw') engine.setDraw();
-    else if (activeTool === 'select') engine.setSelect();
-    else if (activeTool === 'eraser') engine.setEraser();
+    const engine = new CanvasEngineController(canvasRef.current, containerRef.current);
+    if (canvasEngineRef) canvasEngineRef.current = engine;
+
+    const handleWheel = (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = -e.deltaY;
+        const factor = delta > 0 ? 1.1 : 0.9;
+        engine.setZoom(engine.state.zoom * factor, e.clientX, e.clientY);
+      }
+    };
+
+    canvasRef.current.addEventListener('wheel', handleWheel, { passive: false });
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    engine.setBrushOptions({
+      color: brushColor,
+      width: brushSize,
+      opacity: brushOpacity / 100,
+    });
+
+    engine.setTool(activeTool || 'draw');
 
     return () => {
-      // Cleanup if needed
+      window.removeEventListener('resize', resizeCanvas);
+      engine.destroy();
     };
-  // Empty dependency array intentional - canvas should only initialize once on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (canvasEngineRef?.current && (brushColor || brushSize || brushOpacity !== undefined)) {
+      canvasEngineRef.current.setBrushOptions({
+        color: brushColor,
+        width: brushSize,
+        opacity: brushOpacity / 100,
+      });
+    }
+  }, [brushColor, brushSize, brushOpacity, canvasEngineRef]);
+
+  useEffect(() => {
+    if (canvasEngineRef?.current && activeTool) {
+      canvasEngineRef.current.setTool(activeTool);
+    }
+  }, [activeTool, canvasEngineRef]);
+
+  useEffect(() => {
+    if (canvasEngineRef?.current && activeLayer) {
+      canvasEngineRef.current.setActiveLayer(activeLayer);
+    }
+  }, [activeLayer, canvasEngineRef]);
+
+  useEffect(() => {
+    if (canvasEngineRef?.current) {
+      canvasEngineRef.current.setFillEnabled(fillEnabled);
+    }
+  }, [fillEnabled, canvasEngineRef]);
+
   return (
-    <div className="h-full rounded-xl overflow-hidden relative shadow-xl" style={{
-      backgroundColor: '#ffffff',
-      backgroundImage: `
-        linear-gradient(0deg, rgba(200, 200, 200, 0.1) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(200, 200, 200, 0.1) 1px, transparent 1px)
-      `,
-      backgroundSize: '20px 20px'
-    }}>
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full cursor-crosshair"
-        style={{ display: 'block' }}
-      />
+    <div ref={containerRef} className="w-full h-full bg-[#181B21]">
+      <canvas ref={canvasRef} className="w-full h-full cursor-crosshair block" />
     </div>
   );
 }

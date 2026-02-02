@@ -1,106 +1,93 @@
-import { useState } from 'react';
-import { Eye, EyeOff, Lock, Plus } from 'lucide-react';
-
-const cn = (...classes) => classes.filter(Boolean).join(' ');
+import { Eye, EyeOff, Lock, Plus, Check, Layers, MoreVertical, GripVertical } from 'lucide-react';
 
 const defaultLayers = [
-  { id: 'layer-1', name: 'Layer 1', visible: true, type: 'layer' },
-  { id: 'layer-2', name: 'Layer 2', visible: true, type: 'layer' },
-  { id: 'sketch-layer', name: 'Sketch Layer', visible: true, type: 'sketch' },
-  { id: 'background', name: 'Background', visible: false, locked: true, type: 'background' },
+  { id: 'layer-1', name: 'Layer 1', visible: true, locked: false },
+  { id: 'layer-2', name: 'Layer 2', visible: true, locked: false },
+  { id: 'sketch', name: 'Sketch Layer', visible: true, locked: false },
+  { id: 'bg', name: 'Background', visible: true, locked: true },
 ];
 
-export default function LayerPanel({
-  layers = defaultLayers,
-  activeLayer = 'sketch-layer',
-  onLayerSelect,
-  onLayerVisibilityToggle,
-  onAddLayer,
-}) {
-  const displayLayers = layers.length > 0 ? layers : defaultLayers;
-  const [hoveredLayer, setHoveredLayer] = useState(null);
-
+export default function LayerPanel({ layers = defaultLayers, activeLayer, onLayerSelect, onLayerVisibilityToggle, onAddLayer }) {
   return (
-    <div 
-      className="w-64 backdrop-blur-sm rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-      style={{ backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: '1px' }}
-    >
+    <div className="w-[300px] h-full glass-panel border-l border-white/5 flex flex-col overflow-hidden">
       {/* Header */}
-      <div 
-        className="px-4 py-3 flex items-center justify-between"
-        style={{ borderBottomColor: '#374151', borderBottomWidth: '1px' }}
-      >
-        <span className="font-semibold text-sm" style={{ color: '#ffffff' }}>Layers</span>
+      <div className="p-6 flex items-center justify-between border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+            <Layers className="w-4 h-4 text-blue-400" />
+          </div>
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/80">Layers</span>
+        </div>
         <button 
-          onClick={onAddLayer}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-full hover:bg-blue-700 transition-all font-medium shadow-md"
+          onClick={onAddLayer} 
+          className="w-8 h-8 icon-button bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 shadow-lg active:scale-90 transition-all"
+          title="Add Layer"
         >
-          <Plus className="w-3.5 h-3.5" />
-          Add Layer
+          <Plus className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Layer List */}
-      <div className="flex-1 p-3 space-y-2 overflow-y-auto max-h-96">
-        {displayLayers.map((layer) => {
+      {/* List */}
+      <div className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+        {layers.map((layer) => {
           const isActive = activeLayer === layer.id;
-          const isHovered = hoveredLayer === layer.id;
-          
-          const getBackgroundColor = () => {
-            if (layer.locked) return '#1a1a1a';
-            if (isActive) return '#2563eb';
-            if (isHovered) return '#4b5563';
-            return '#374151';
-          };
-          
           return (
             <div
               key={layer.id}
-              onClick={() => !layer.locked && onLayerSelect?.(layer.id)}
-              onMouseEnter={() => !layer.locked && !isActive && setHoveredLayer(layer.id)}
-              onMouseLeave={() => !layer.locked && !isActive && setHoveredLayer(null)}
-              style={{
-                backgroundColor: getBackgroundColor(),
-                color: layer.locked ? '#9ca3af' : '#ffffff'
-              }}
-              className={cn(
-                "px-3 py-2.5 rounded-lg flex items-center justify-between transition-all",
-                isActive && "shadow-md",
-                layer.locked ? "cursor-default" : "cursor-pointer"
-              )}
+              onClick={() => onLayerSelect?.(layer.id)}
+              className={`group px-3 py-3 rounded-xl cursor-pointer flex items-center gap-3 transition-all duration-300 border ${
+                isActive 
+                  ? 'bg-blue-500/20 border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.15)]' 
+                  : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
+              }`}
             >
-              <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                {layer.locked && <Lock className="w-4 h-4 flex-shrink-0" />}
-                <span className="text-sm font-medium truncate">{layer.name}</span>
+              {/* Drag Handle */}
+              <div className="text-white/10 group-hover:text-white/30 transition-colors">
+                 <GripVertical className="w-4 h-4" />
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Visibility Toggle */}
-                {!layer.locked && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onLayerVisibilityToggle?.(layer.id);
-                    }}
-                    className={cn(
-                      "p-1 rounded transition-all",
-                      isActive 
-                        ? "hover:bg-blue-700" 
-                        : "hover:bg-gray-600"
-                    )}
-                    title={layer.visible ? 'Hide layer' : 'Show layer'}
-                  >
-                    {layer.visible ? (
-                      <Eye className="w-4 h-4" />
-                    ) : (
-                      <EyeOff className="w-4 h-4 opacity-40" />
-                    )}
-                  </button>
-                )}
+              {/* Icon (Lock or Edit) */}
+              <div className={`${isActive ? 'text-blue-400' : 'text-white/20'}`}>
+                 {layer.locked ? <Lock className="w-3.5 h-3.5" /> : (isActive ? <div className="w-3.5 h-3.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div> : <div className="w-3.5 h-3.5 border-2 border-white/10 rounded-full"></div>)}
               </div>
+
+              {/* Name */}
+              <span className={`flex-1 text-[11px] font-bold uppercase tracking-wider truncate ${isActive ? 'text-blue-100' : 'text-white/40'}`}>
+                {layer.name}
+              </span>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onLayerVisibilityToggle?.(layer.id);
+                  }}
+                  className={`p-1.5 rounded-lg transition-all ${isActive ? 'text-blue-400 hover:bg-blue-400/20' : 'text-white/30 hover:bg-white/10'}`}
+                >
+                  {layer.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                </button>
+                <button className="p-1.5 text-white/20 hover:text-white/60">
+                   <MoreVertical className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              
+              {isActive && !layer.locked && <Check className="w-3.5 h-3.5 text-blue-400 ml-1" strokeWidth={3} />}
             </div>
           );
         })}
+      </div>
+      
+      {/* Bottom Area */}
+      <div className="p-4 border-t border-white/5 bg-black/20">
+        <div className="flex justify-between items-center px-2">
+          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Scene Graph</span>
+          <div className="flex gap-1.5">
+            <div className="w-1 h-1 rounded-full bg-blue-500/40" />
+            <div className="w-1 h-1 rounded-full bg-blue-500/40" />
+            <div className="w-1 h-1 rounded-full bg-blue-500/40" />
+          </div>
+        </div>
       </div>
     </div>
   );
