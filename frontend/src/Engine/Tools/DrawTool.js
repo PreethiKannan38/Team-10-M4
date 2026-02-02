@@ -1,54 +1,145 @@
-import { Tool } from './Tool'
-import * as Y from 'yjs'
+/**
+ * DrawTool.js
+ * 
+ * Brush drawing tool for creating smooth strokes.
+ * Handles stroke creation, smoothing, and commitment to scene.
+ */
 
-export class DrawTool extends Tool {
-  constructor(ctx, buffer, yStrokes) {
-    super()
-    this.ctx = ctx
-    this.buffer = buffer
-    this.bctx = buffer.getContext('2d')
-    this.yStrokes = yStrokes
-    this.drawing = false
-    this.points = []
+import BaseTool from './BaseTool';
+import { BezierSmoothing } from '../utils/BezierSmoothing';
+import { AddObjectCommand } from '../managers/HistoryManager';
+
+export class DrawTool extends BaseTool {
+  constructor(engine) {
+    super(engine);
+    this.currentStroke = null;
+    this.strokePoints = [];
+    this.smoothedPoints = [];
   }
 
-  onPointerDown(e) {
-    this.drawing = true
-    this.points = [{ x: e.x, y: e.y }]
+  /**
+   * Start stroke on pointer down
+   */
+  onPointerDown(event, engine) {
+    if (!event.canvasX || !event.canvasY) return;
+
+    // Initialize stroke object
+    this.currentStroke = {
+      type: 'stroke',
+      geometry: {
+        points: [{ x: event.canvasX, y: event.canvasY }]
+      },
+      style: {
+        color: engine.state.brushOptions.color || '#000000',
+        width: engine.state.activeTool === 'pencil' ? 1 : (engine.state.brushOptions.width || 2),
+        opacity: engine.state.brushOptions.opacity || 1,
+        lineCap: 'round',
+        lineJoin: 'round'
+      },
+      layerId: engine.state.activeLayerId
+    };
+
+    this.strokePoints = [{ x: event.canvasX, y: event.canvasY }];
+    this.smoothedPoints = this.strokePoints.slice();
   }
 
-  onPointerMove(e) {
-    if (!this.drawing) return
+  /**
+   * Accumulate points and smooth during drag
+   */
+  onPointerMove(event, engine) {
+    if (!event.canvasX || !event.canvasY || !this.currentStroke) return;
 
-    this.points.push({ x: e.x, y: e.y })
+    // Append new point to stroke
+    const newPoint = { x: event.canvasX, y: event.canvasY };
+    this.strokePoints.push(newPoint);
+    this.currentStroke.geometry.points.push(newPoint);
 
-    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height)
-    this.ctx.drawImage(this.buffer, 0, 0)
+    // Apply Bézier smoothing to prevent jitter
+    this.smoothedPoints = BezierSmoothing.interpolatePoints(
+      this.strokePoints,
+      0.4
+    );
 
-    this.ctx.beginPath()
-    this.ctx.moveTo(this.points[0].x, this.points[0].y)
-    for (let i = 1; i < this.points.length; i++) {
-      this.ctx.lineTo(this.points[i].x, this.points[i].y)
+    // Update stroke geometry with smoothed points
+    this.currentStroke.geometry.points = this.smoothedPoints;
+  }
+
+  /**
+   * Finalize stroke and commit to scene on pointer up
+   */
+  onPointerUp(event, engine) {
+    if (!this.currentStroke) return;
+
+    // Ensure stroke has at least 2 points
+    if (this.currentStroke.geometry.points.length < 2) {
+      this.currentStroke = null;
+      this.strokePoints = [];
+      this.smoothedPoints = [];
+      return;
     }
-    this.ctx.stroke()
+
+    // Update stroke with final smoothed geometry
+    this.currentStroke.geometry.points = this.smoothedPoints;
+
+    // Create command for undo/redo
+    const command = new AddObjectCommand(
+      engine,
+      this.currentStroke
+    );
+
+    // Execute command (adds to scene and history)
+    engine.executeCommand(command);
+
+    // Clear current stroke
+    this.currentStroke = null;
+    this.strokePoints = [];
+    this.smoothedPoints = [];
   }
 
-  onPointerUp() {
-    if (!this.drawing || this.points.length < 2) return
-    this.drawing = false
+  /**
+   * Preview stroke in progress
+   */
+  renderPreview(ctx, engine) {
+    if (!this.currentStroke || this.smoothedPoints.length < 2) return;
 
-    const stroke = new Y.Map()
-    stroke.set('id', crypto.randomUUID())
-    stroke.set('color', 'black')
-    stroke.set('width', 2)
-    stroke.set('points', this.points)
+    const points = this.smoothedPoints;
+    const style = this.currentStroke.style;
 
-    this.yStrokes.push([stroke])
-    this.points = []
+    // Setup canvas for stroke rendering
+    ctx.strokeStyle = this._colorWithOpacity(style.color, style.opacity * 0.8);
+    ctx.lineWidth = style.width;
+    ctx.lineCap = style.lineCap;
+    ctx.lineJoin = style.lineJoin;
+
+    // Draw stroke path
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+
+    ctx.stroke();
   }
 
-  onCancel() {
-    this.drawing = false
-    this.points = []
+  /**
+   * Helper: Convert hex color to rgba with opacity
+   */
+  _colorWithOpacity(color, opacity) {
+    // Handle hex color
+    if (color.startsWith('#')) {
+      const hex = color.substring(1);
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+    // Handle rgb/rgba
+    if (color.startsWith('rgb')) {
+      return color.replace('rgb(', 'rgba(').replace(')', `, ${opacity})`);
+    }
+    return color;
   }
 }
+
+export default DrawTool;
