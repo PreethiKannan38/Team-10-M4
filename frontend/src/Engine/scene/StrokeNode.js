@@ -35,12 +35,12 @@ export class StrokeNode {
     if (this.type === 'text' && this.text) {
       // Draw text
       ctx.font = `${this.fontSize}px Inter, sans-serif`
-      ctx.fillStyle = selected ? 'rgba(0,120,255,0.8)' : this.color
+      ctx.fillStyle = selected ? '#2563EB' : this.color
       ctx.globalAlpha = selected ? 1.0 : this.opacity
       ctx.fillText(this.text, this.x, this.y)
     } else if (this.type === 'fill') {
       // Draw filled rectangle
-      ctx.fillStyle = selected ? 'rgba(0,120,255,0.8)' : this.color
+      ctx.fillStyle = selected ? '#2563EB' : this.color
       ctx.globalAlpha = selected ? 1.0 : this.opacity
       ctx.fillRect(this.x, this.y, this.fillWidth, this.fillHeight)
     } else {
@@ -48,7 +48,7 @@ export class StrokeNode {
       if (this.points.length < 2) return
 
       ctx.beginPath()
-      ctx.strokeStyle = selected ? 'rgba(0,120,255,0.8)' : this.color
+      ctx.strokeStyle = selected ? '#2563EB' : this.color
       ctx.lineWidth = selected ? this.width + 2 : this.width
       ctx.globalAlpha = selected ? 1.0 : this.opacity
       ctx.lineCap = 'round'
