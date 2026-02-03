@@ -11,6 +11,7 @@ export default function App() {
   const [brushColor, setBrushColor] = useState('#8b5cf6');
   const [brushSize, setBrushSize] = useState(5);
   const [brushOpacity, setBrushOpacity] = useState(100);
+  const [gridOpacity, setGridOpacity] = useState(30);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const [fillEnabled, setFillOn] = useState(false);
@@ -63,11 +64,11 @@ export default function App() {
   }, []);
 
   return (
-    <div className="w-screen h-screen bg-[#050505] flex flex-col overflow-hidden font-sans text-white relative">
-      {/* Dynamic Background */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600 blur-[150px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600 blur-[150px] rounded-full" />
+    <div className="w-screen h-screen bg-[#FAFAFC] flex flex-col overflow-hidden font-sans text-slate-800 relative">
+      {/* Dynamic Background - Minimal and Airy */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-[0.03]">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#7C6AF2] blur-[180px] rounded-full" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-[#6B7A99] blur-[180px] rounded-full" />
       </div>
 
       {/* Top Bar - Marginally longer height for better usability */}
@@ -80,10 +81,10 @@ export default function App() {
         {/* Toolbar Toggle Button (Left Edge) */}
         <button
           onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-          className={`absolute top-1/2 -translate-y-1/2 z-50 w-6 h-24 glass-panel border-l-0 rounded-r-2xl flex items-center justify-center text-white/40 hover:text-white transition-all duration-500 ease-spring ${isToolbarOpen ? 'left-[120px]' : 'left-0'}`}
+          className={`absolute top-1/2 -translate-y-1/2 z-50 w-8 h-32 bg-white/80 backdrop-blur-md border border-slate-200 border-l-0 rounded-r-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isToolbarOpen ? 'left-[120px]' : 'left-0'}`}
         >
-          <div className={`transition-transform duration-500 ${isToolbarOpen ? 'rotate-180' : ''}`}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+          <div className={`transition-transform duration-500 ${isToolbarOpen ? '' : 'rotate-180'}`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
           </div>
@@ -91,14 +92,14 @@ export default function App() {
 
         {/* Vertical Left Toolbar - Collapsible */}
         <aside 
-          className={`z-40 px-6 py-8 transition-all duration-500 ease-spring ${isToolbarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-150px] opacity-0 pointer-events-none'}`}
+          className={`absolute top-0 bottom-0 left-0 z-40 px-6 py-8 flex items-center transition-all duration-500 ease-spring ${isToolbarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-150px] opacity-0 pointer-events-none'}`}
         >
           <Toolbar activeTool={activeTool} onToolChange={setActiveTool} onAction={handleAction} />
         </aside>
 
         {/* Main Canvas Workspace */}
-        <main className="flex-1 relative flex items-center justify-center p-4">
-          <div className="w-full h-full glass-panel rounded-[2.5rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.6)] border-white/[0.03]">
+        <main className="flex-1 relative flex items-center justify-center">
+          <div className="w-full h-full bg-[#FAFAFC] overflow-hidden border-none">
             <Canvas
               canvasEngineRef={canvasEngineRef}
               activeTool={activeTool}
@@ -107,16 +108,17 @@ export default function App() {
               brushOpacity={brushOpacity}
               activeLayer={activeLayer}
               fillEnabled={fillEnabled}
+              gridOpacity={gridOpacity}
             />
           </div>
 
           {/* Properties Toggle Button (Right Edge) */}
           <button
             onClick={() => setIsPropertiesOpen(!isPropertiesOpen)}
-            className={`absolute top-1/2 -translate-y-1/2 z-50 w-6 h-24 glass-panel border-r-0 rounded-l-2xl flex items-center justify-center text-white/40 hover:text-white transition-all duration-500 ease-spring ${isPropertiesOpen ? 'right-[320px]' : 'right-0'}`}
+            className={`absolute top-1/2 -translate-y-1/2 z-50 w-8 h-32 bg-white/80 backdrop-blur-md border border-slate-200 border-r-0 rounded-l-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isPropertiesOpen ? 'right-[320px]' : 'right-0'}`}
           >
             <div className={`transition-transform duration-500 ${isPropertiesOpen ? '' : 'rotate-180'}`}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
             </div>
@@ -128,9 +130,11 @@ export default function App() {
               brushColor={brushColor}
               strokeWidth={brushSize}
               strokeOpacity={brushOpacity}
+              gridOpacity={gridOpacity}
               onBrushColorChange={setBrushColor}
               onStrokeWidthChange={setBrushSize}
               onStrokeOpacityChange={setBrushOpacity}
+              onGridOpacityChange={setGridOpacity}
               fillEnabled={fillEnabled}
               onFillToggle={() => setFillOn(!fillEnabled)}
             />
@@ -139,24 +143,24 @@ export default function App() {
       </div>
 
       {/* Modern Footer Control Strip */}
-      <footer className="h-12 glass-panel border-t-0 border-white/5 flex items-center justify-between px-8 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+      <footer className="h-12 border-t border-slate-200 flex items-center justify-between px-8 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
         <div className="flex items-center gap-10">
           <div className="flex items-center gap-3">
             <span>Tool</span>
-            <span className="text-purple-400">{activeTool}</span>
+            <span className="text-purple-600">{activeTool}</span>
           </div>
           <div className="flex items-center gap-3">
             <span>Size</span>
-            <span className="text-purple-400">{brushSize}px</span>
+            <span className="text-purple-600">{brushSize}px</span>
           </div>
           <div className="flex items-center gap-3">
             <span>Fill</span>
-            <span className={fillEnabled ? 'text-green-400' : 'text-red-400'}>{fillEnabled ? 'On' : 'Off'}</span>
+            <span className={fillEnabled ? 'text-green-600' : 'text-red-600'}>{fillEnabled ? 'On' : 'Off'}</span>
           </div>
         </div>
         <div className="flex items-center gap-8">
           <span>Zoom 100%</span>
-          <div className="w-[1px] h-3 bg-white/10" />
+          <div className="w-[1px] h-3 bg-slate-200" />
           <span>1920 x 1080</span>
         </div>
       </footer>
