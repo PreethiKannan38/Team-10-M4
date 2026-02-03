@@ -23,8 +23,8 @@ export class CanvasEngineController {
 
     // === YJS INITIALIZATION ===
     this.doc = new Y.Doc();
-    this.provider = new WebsocketProvider('ws://localhost:1234', 'drawing-room', this.doc);
-    
+    this.provider = new WebsocketProvider('ws://localhost:5000', 'drawing-room', this.doc);
+
     this.provider.on('status', event => {
       console.log('Yjs WebSocket Status:', event.status);
     });
@@ -51,14 +51,14 @@ export class CanvasEngineController {
     };
 
     // === MANAGER INITIALIZATION ===
-    this.sceneManager = new SceneManager(); 
-    this.layerManager = new LayerManager(); 
-    this.historyManager = new HistoryManager(); 
-    this.coordinateMapper = new CoordinateMapper(canvas); 
-    this.toolManager = new ToolManager(); 
+    this.sceneManager = new SceneManager();
+    this.layerManager = new LayerManager();
+    this.historyManager = new HistoryManager();
+    this.coordinateMapper = new CoordinateMapper(canvas);
+    this.toolManager = new ToolManager();
 
     this.currentTool = null;
-    this.toolState = {}; 
+    this.toolState = {};
 
     this.setupPointerListeners();
     this.setupWindowListeners();
@@ -107,7 +107,7 @@ export class CanvasEngineController {
   syncFromYjs() {
     const objects = this.yObjects.toJSON();
     this.sceneManager.objects = objects;
-    
+
     const layers = this.yLayers.toJSON();
     this.layerManager.layers = layers;
 
@@ -140,7 +140,7 @@ export class CanvasEngineController {
     this.doc.transact(() => {
       this.yLayers.push([defaultLayer]);
     });
-    
+
     this.state.activeLayerId = layerId;
     this.syncFromYjs();
   }
@@ -169,10 +169,10 @@ export class CanvasEngineController {
   addObject(object) {
     const id = object.id || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2));
     const layerId = object.layerId || this.state.activeLayerId;
-    
+
     // Calculate bounds before saving for selection support
     const bounds = this._calculateBounds(object.type, object.geometry, object.style);
-    
+
     const obj = {
       ...object,
       id,
@@ -203,7 +203,7 @@ export class CanvasEngineController {
         }
       }
     });
-    
+
     // Immediate local sync to ensure objects are instantly selectable
     this.syncFromYjs();
     return obj;
@@ -271,7 +271,7 @@ export class CanvasEngineController {
     this.doc.transact(() => {
       // 1. Wipe all objects
       this.yObjects.clear();
-      
+
       // 2. Clear object IDs from all layers
       const layers = this.yLayers.toJSON();
       this.yLayers.delete(0, this.yLayers.length);
@@ -301,7 +301,7 @@ export class CanvasEngineController {
   setZoom(zoomLevel, centerX, centerY) {
     const oldZoom = this.state.zoom;
     const newZoom = Math.max(0.1, Math.min(10.0, zoomLevel));
-    
+
     if (!centerX || !centerY) {
       this.state.zoom = newZoom;
     } else {
@@ -315,7 +315,7 @@ export class CanvasEngineController {
       this.state.pan.y = mouseY - (mouseY - this.state.pan.y) * (newZoom / oldZoom);
       this.state.zoom = newZoom;
     }
-    
+
     this.dispatchStateChange('zoom', this.state.zoom);
     this.render();
   }
@@ -391,13 +391,13 @@ export class CanvasEngineController {
     this.ctx.save();
     this.ctx.font = 'bold 12px Inter';
     this.ctx.textAlign = 'center';
-    
+
     // Size Indicator
     this.ctx.fillStyle = 'rgba(139, 92, 246, 0.8)';
     this.ctx.beginPath();
     this.ctx.arc(x, y, width / 2, 0, Math.PI * 2);
     this.ctx.fill();
-    
+
     this.ctx.fillStyle = 'white';
     this.ctx.fillText(`${width}px • ${Math.round(opacity * 100)}%`, x, y + width / 2 + 20);
     this.ctx.restore();
