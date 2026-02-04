@@ -72,7 +72,7 @@ export default function App() {
       </div>
 
       {/* Top Bar - Marginally longer height for better usability */}
-      <div className="h-20 flex-shrink-0 relative z-50">
+      <div className="h-20 shrink-0 relative z-50">
         <TopBar onClear={clearCanvas} />
       </div>
 
@@ -81,7 +81,7 @@ export default function App() {
         {/* Toolbar Toggle Button (Left Edge) */}
         <button
           onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-          className={`absolute top-1/2 -translate-y-1/2 z-50 w-8 h-32 bg-white/80 backdrop-blur-md border border-slate-200 border-l-0 rounded-r-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isToolbarOpen ? 'left-[120px]' : 'left-0'}`}
+          className={`absolute top-1/2 -translate-y-1/2 z-30 w-8 h-25 bg-white/80 backdrop-blur-md border border-slate-200 border-l-0 rounded-r-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isToolbarOpen ? 'left-[90px]' : 'left-0'}`}
         >
           <div className={`transition-transform duration-500 ${isToolbarOpen ? '' : 'rotate-180'}`}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
@@ -160,7 +160,7 @@ export default function App() {
         </div>
         <div className="flex items-center gap-8">
           <span>Zoom 100%</span>
-          <div className="w-[1px] h-3 bg-slate-200" />
+          <div className="w-px h-3 bg-slate-200" />
           <span>1920 x 1080</span>
         </div>
       </footer>
