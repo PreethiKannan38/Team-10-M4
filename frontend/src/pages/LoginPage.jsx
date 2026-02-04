@@ -1,7 +1,22 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Github } from 'lucide-react';
 
 export default function LoginPage({ onLogin, onSwitchToSignup }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+    // For now, any non-empty email/password works
+    onLogin();
+  };
+
   return (
     <div className="min-h-screen bg-[#FAFAFC] flex items-center justify-center p-6 font-sans">
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-40">
@@ -22,12 +37,19 @@ export default function LoginPage({ onLogin, onSwitchToSignup }) {
           <p className="text-slate-500 text-sm">Log in to continue to DesignDeck</p>
         </div>
 
-        <div className="space-y-4 mb-8">
+        <form onSubmit={handleSubmit} className="space-y-4 mb-8">
+          {error && (
+            <div className="bg-red-50 text-red-500 text-xs font-bold p-3 rounded-xl border border-red-100 mb-2">
+              {error}
+            </div>
+          )}
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input 
               type="email" 
               placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm font-medium"
             />
           </div>
@@ -36,18 +58,20 @@ export default function LoginPage({ onLogin, onSwitchToSignup }) {
             <input 
               type="password" 
               placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm font-medium"
             />
           </div>
-        </div>
-
-        <button 
-          onClick={onLogin}
-          className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-purple-700 transition-all active:scale-95 mb-6"
-        >
-          Login to Workspace
-          <ArrowRight className="w-5 h-5" />
-        </button>
+          
+          <button 
+            type="submit"
+            className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-purple-700 transition-all active:scale-95 mt-4"
+          >
+            Login to Workspace
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </form>
 
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center">
