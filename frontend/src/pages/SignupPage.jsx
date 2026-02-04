@@ -1,7 +1,18 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight, Github } from 'lucide-react';
 
 export default function SignupPage({ onSignup, onSwitchToLogin }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSignup();
+  };
+
   return (
     <div className="min-h-screen bg-[#FAFAFC] flex items-center justify-center p-6 font-sans">
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-40">
@@ -22,12 +33,19 @@ export default function SignupPage({ onSignup, onSwitchToLogin }) {
           <p className="text-slate-500 text-sm">Join DesignDeck and start creating</p>
         </div>
 
-        <div className="space-y-4 mb-8">
+        <form onSubmit={handleSubmit} className="space-y-4 mb-8">
+          {error && (
+            <div className="bg-red-50 text-red-500 text-xs font-bold p-3 rounded-xl border border-red-100 mb-2">
+              {error}
+            </div>
+          )}
           <div className="relative">
             <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input 
               type="text" 
               placeholder="Full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm font-medium"
             />
           </div>
@@ -36,6 +54,8 @@ export default function SignupPage({ onSignup, onSwitchToLogin }) {
             <input 
               type="email" 
               placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm font-medium"
             />
           </div>
@@ -44,18 +64,20 @@ export default function SignupPage({ onSignup, onSwitchToLogin }) {
             <input 
               type="password" 
               placeholder="Create password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm font-medium"
             />
           </div>
-        </div>
 
-        <button 
-          onClick={onSignup}
-          className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-purple-700 transition-all active:scale-95 mb-6"
-        >
-          Create Workspace
-          <ArrowRight className="w-5 h-5" />
-        </button>
+          <button 
+            type="submit"
+            className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-purple-700 transition-all active:scale-95 mt-4"
+          >
+            Create Workspace
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </form>
 
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center">
