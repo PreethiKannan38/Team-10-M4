@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { CanvasEngineController } from '../Engine/CanvasEngineController';
 
-export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, activeLayer, fillEnabled }) {
+export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, activeLayer, fillEnabled, gridOpacity }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -75,8 +75,14 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
     }
   }, [fillEnabled, canvasEngineRef]);
 
+  useEffect(() => {
+    if (canvasEngineRef?.current && gridOpacity !== undefined) {
+      canvasEngineRef.current.setGridOpacity(gridOpacity / 100);
+    }
+  }, [gridOpacity, canvasEngineRef]);
+
   return (
-    <div ref={containerRef} className="w-full h-full bg-[#181B21]">
+    <div ref={containerRef} className="w-full h-full bg-white">
       <canvas ref={canvasRef} className="w-full h-full cursor-crosshair block" />
     </div>
   );

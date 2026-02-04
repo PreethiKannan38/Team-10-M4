@@ -3,7 +3,7 @@ import { AddObjectCommand } from '../managers/HistoryManager';
 
 export class LineTool extends BaseTool {
   constructor(engine) { super(engine); this.start = null; this.end = null; }
-  onPointerDown(ev) { this.start = { x: ev.canvasX, y: ev.canvasY }; }
+  onPointerDown(ev) { this.start = { x: ev.canvasX, y: ev.canvasY }; this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerMove(ev) { if (this.start) this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerUp(ev, engine) {
     if (!this.start || !this.end) return;
@@ -23,7 +23,7 @@ export class LineTool extends BaseTool {
 
 export class ArrowTool extends BaseTool {
   constructor(engine) { super(engine); this.start = null; this.end = null; }
-  onPointerDown(ev) { this.start = { x: ev.canvasX, y: ev.canvasY }; }
+  onPointerDown(ev) { this.start = { x: ev.canvasX, y: ev.canvasY }; this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerMove(ev) { if (this.start) this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerUp(ev, engine) {
     if (!this.start || !this.end) return;
@@ -43,7 +43,7 @@ export class ArrowTool extends BaseTool {
 
 export class RectangleTool extends BaseTool {
   constructor(engine) { super(engine); this.start = null; this.end = null; }
-  onPointerDown(ev) { this.start = { x: ev.canvasX, y: ev.canvasY }; }
+  onPointerDown(ev) { this.start = { x: ev.canvasX, y: ev.canvasY }; this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerMove(ev) { if (this.start) this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerUp(ev, engine) {
     if (!this.start || !this.end) return;
@@ -63,7 +63,7 @@ export class RectangleTool extends BaseTool {
 
 export class CircleTool extends BaseTool {
   constructor(engine) { super(engine); this.start = null; this.end = null; }
-  onPointerDown(ev) { this.start = { x: ev.canvasX, y: ev.canvasY }; }
+  onPointerDown(ev) { this.start = { x: ev.canvasX, y: ev.canvasY }; this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerMove(ev) { if (this.start) this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerUp(ev, engine) {
     if (!this.start || !this.end) return;
@@ -84,7 +84,7 @@ export class CircleTool extends BaseTool {
 
 export class TriangleTool extends BaseTool {
   constructor(engine) { super(engine); this.start = null; this.end = null; }
-  onPointerDown(ev) { this.start = { x: ev.canvasX, y: ev.canvasY }; }
+  onPointerDown(ev) { this.start = { x: ev.canvasX, y: ev.canvasY }; this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerMove(ev) { if (this.start) this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerUp(ev, engine) {
     if (!this.start || !this.end) return;
@@ -110,4 +110,43 @@ export class TriangleTool extends BaseTool {
   }
 }
 
-export default { LineTool, RectangleTool, CircleTool, TriangleTool, ArrowTool };
+export class PolygonTool extends BaseTool {
+  constructor(engine) { super(engine); this.start = null; this.end = null; this.sides = 6; }
+  onPointerDown(ev) { 
+    this.start = { x: ev.canvasX, y: ev.canvasY }; 
+    this.end = { x: ev.canvasX, y: ev.canvasY }; 
+  }
+  onPointerMove(ev) { if (this.start) this.end = { x: ev.canvasX, y: ev.canvasY }; }
+  onPointerUp(ev, engine) {
+    if (!this.start || !this.end) return;
+    const radius = Math.sqrt((this.end.x - this.start.x)**2 + (this.end.y - this.start.y)**2);
+    if (radius < 1) { this.start = null; this.end = null; return; }
+    const points = [];
+    for (let i = 0; i < this.sides; i++) {
+      const angle = (i * 2 * Math.PI) / this.sides - Math.PI / 2;
+      points.push({
+        x: this.start.x + radius * Math.cos(angle),
+        y: this.start.y + radius * Math.sin(angle)
+      });
+    }
+    engine.executeCommand(new AddObjectCommand(engine, {
+      type: 'polygon', geometry: { points },
+      style: { ...engine.state.brushOptions, fillColor: engine.state.fillEnabled ? engine.state.brushOptions.color : 'transparent' }
+    }));
+    this.start = null; this.end = null;
+  }
+  renderPreview(ctx, engine) {
+    if (!this.start || !this.end) return;
+    const radius = Math.sqrt((this.end.x - this.start.x)**2 + (this.end.y - this.start.y)**2);
+    if (radius < 1) return;
+    ctx.strokeStyle = engine.state.brushOptions.color;
+    ctx.beginPath();
+    for (let i = 0; i < this.sides; i++) {
+      const angle = (i * 2 * Math.PI) / this.sides - Math.PI / 2;
+      const px = this.start.x + radius * Math.cos(angle);
+      const py = this.start.y + radius * Math.sin(angle);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath(); ctx.stroke();
+  }
+}

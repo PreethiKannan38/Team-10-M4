@@ -36,6 +36,8 @@ export class CanvasEngineController {
     this.state = {
       activeTool: 'draw',
       isDrawing: false,
+      isPanning: false,
+      lastMousePos: { x: 0, y: 0 },
       selectedObjectId: null,
       brushOptions: {
         color: '#217BF4',
@@ -48,6 +50,7 @@ export class CanvasEngineController {
       pan: { x: 0, y: 0 },
       activeLayerId: null,
       fillEnabled: false,
+      gridOpacity: 0.15,
     };
 
     // === MANAGER INITIALIZATION ===
@@ -295,6 +298,11 @@ export class CanvasEngineController {
     this.dispatchStateChange('fillEnabled', enabled);
   }
 
+  setGridOpacity(opacity) {
+    this.state.gridOpacity = opacity;
+    this.render();
+  }
+
   /**
    * Set zoom level centered on a specific point
    */
@@ -323,6 +331,13 @@ export class CanvasEngineController {
   // --- EVENTS ---
 
   onPointerDown(event) {
+    // Handle Middle Mouse or Spacebar+LeftClick for panning
+    if (event.button === 1 || this.spacePressed) {
+      this.state.isPanning = true;
+      this.state.lastMousePos = { x: event.clientX, y: event.clientY };
+      return;
+    }
+
     if (!this.currentTool) return;
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     this.state.isDrawing = true;
@@ -330,6 +345,18 @@ export class CanvasEngineController {
   }
 
   onPointerMove(event) {
+    if (this.state.isPanning) {
+      const dx = event.clientX - this.state.lastMousePos.x;
+      const dy = event.clientY - this.state.lastMousePos.y;
+      
+      this.state.pan.x += dx;
+      this.state.pan.y += dy;
+      
+      this.state.lastMousePos = { x: event.clientX, y: event.clientY };
+      this.render();
+      return;
+    }
+
     if (!this.currentTool) return;
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     this.pointerX = coords.x;
@@ -338,6 +365,7 @@ export class CanvasEngineController {
   }
 
   onPointerUp(event) {
+    this.state.isPanning = false;
     if (!this.currentTool) return;
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     this.state.isDrawing = false;
@@ -356,12 +384,17 @@ export class CanvasEngineController {
 
   render() {
     if (!this.ctx) return;
-    this.ctx.fillStyle = '#181B21';
+    
+    // Figma-inspired soft neutral background
+    this.ctx.fillStyle = '#FAFAFC';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.ctx.save();
     this.ctx.translate(this.state.pan.x, this.state.pan.y);
     this.ctx.scale(this.state.zoom, this.state.zoom);
+
+    // Dynamic grid that fades based on zoom level
+    this.renderGrid();
 
     const layers = this.yLayers.toArray();
     layers.forEach(layer => {
@@ -381,6 +414,40 @@ export class CanvasEngineController {
     if (this.feedbackActive) {
       this.renderFeedback();
     }
+  }
+
+  renderGrid() {
+    const gridSize = 50;
+    
+    // Base opacity from user setting (0-1)
+    const baseOpacity = this.state.gridOpacity;
+    if (baseOpacity <= 0) return;
+
+    // Fade out smoothly while zooming in, more visible when zooming out
+    const zoomFactor = Math.min(1, 1 / this.state.zoom);
+    const finalOpacity = baseOpacity * 0.8 * zoomFactor; // Increased multiplier significantly
+    
+    const startX = Math.floor(-this.state.pan.x / this.state.zoom / gridSize) * gridSize;
+    const startY = Math.floor(-this.state.pan.y / this.state.zoom / gridSize) * gridSize;
+    const endX = startX + (this.canvas.width / this.state.zoom) + gridSize;
+    const endY = startY + (this.canvas.height / this.state.zoom) + gridSize;
+
+    this.ctx.strokeStyle = `rgba(148, 163, 184, ${finalOpacity})`; // Even darker slate gray #94A3B8 for better visibility
+    this.ctx.lineWidth = 1 / this.state.zoom;
+    
+    this.ctx.beginPath();
+    // Vertical lines
+    for (let x = startX; x < endX; x += gridSize) {
+      this.ctx.moveTo(x, startY);
+      this.ctx.lineTo(x, endY);
+    }
+    
+    // Horizontal lines
+    for (let y = startY; y < endY; y += gridSize) {
+      this.ctx.moveTo(startX, y);
+      this.ctx.lineTo(endX, y);
+    }
+    this.ctx.stroke();
   }
 
   renderFeedback() {
@@ -404,12 +471,14 @@ export class CanvasEngineController {
   }
 
   renderObject(obj) {
-    const { type, geometry, style } = obj;
+    const { type, geometry, style, id } = obj;
     if (!geometry) return;
 
+    const isSelected = this.state.selectedObjectId === id;
+    
     this.ctx.globalAlpha = style?.opacity || 1.0;
-    this.ctx.strokeStyle = style?.color || '#000000';
-    this.ctx.lineWidth = style?.width || 1;
+    this.ctx.strokeStyle = isSelected ? '#2563EB' : (style?.color || '#000000');
+    this.ctx.lineWidth = isSelected ? (style?.width || 1) + 2 : (style?.width || 1);
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
     this.ctx.fillStyle = style?.fillColor || 'transparent';
@@ -441,6 +510,17 @@ export class CanvasEngineController {
       this.ctx.font = `${style.fontSize || 16}px ${style.fontFamily || 'Arial'}`;
       this.ctx.fillText(geometry.text, geometry.x, geometry.y);
     }
+
+    // Draw a bounding box for selected items for extra clarity
+    if (isSelected && obj.bounds) {
+      this.ctx.save();
+      this.ctx.strokeStyle = '#2563EB';
+      this.ctx.lineWidth = 1 / this.state.zoom;
+      this.ctx.setLineDash([5, 5]);
+      this.ctx.strokeRect(obj.bounds.x - 4, obj.bounds.y - 4, obj.bounds.w + 8, obj.bounds.h + 8);
+      this.ctx.restore();
+    }
+
     this.ctx.globalAlpha = 1.0;
   }
 
@@ -486,12 +566,29 @@ export class CanvasEngineController {
     this.canvas.addEventListener('pointermove', e => this.onPointerMove(e));
     this.canvas.addEventListener('pointerup', e => this.onPointerUp(e));
     this.canvas.addEventListener('pointerleave', e => this.onPointerUp(e));
+    
+    // Double click to reset view or toggle pan (optional, but let's add move tool toggle)
+    this.canvas.addEventListener('dblclick', () => {
+      this.setTool('move');
+    });
   }
 
   setupWindowListeners() {
+    this.spacePressed = false;
     window.addEventListener('keydown', e => {
+      if (e.code === 'Space') {
+        this.spacePressed = true;
+        this.canvas.style.cursor = 'grab';
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y') && e.shiftKey) { e.preventDefault(); this.redo(); }
+    });
+
+    window.addEventListener('keyup', e => {
+      if (e.code === 'Space') {
+        this.spacePressed = false;
+        this.canvas.style.cursor = 'crosshair';
+      }
     });
   }
 
