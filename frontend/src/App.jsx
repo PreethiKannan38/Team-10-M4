@@ -143,6 +143,34 @@ export default function App() {
                     gridOpacity={gridOpacity}
                   />
                 </div>
+
+                {/* Properties Toggle Button */}
+                <button
+                  onClick={() => setIsPropertiesOpen(!isPropertiesOpen)}
+                  className={`absolute top-1/2 -translate-y-1/2 z-50 w-8 h-32 bg-white/80 backdrop-blur-md border border-slate-200 border-r-0 rounded-l-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isPropertiesOpen ? 'right-[320px]' : 'right-0'}`}
+                >
+                  <motion.div animate={{ rotate: isPropertiesOpen ? 0 : 180 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                  </motion.div>
+                </button>
+
+                {/* Floating Properties Panel */}
+                <div className={`absolute top-6 bottom-6 right-6 z-40 transition-all duration-500 ease-spring ${isPropertiesOpen ? 'translate-x-0 opacity-100' : 'translate-x-[360px] opacity-0 pointer-events-none'}`}>
+                  <Footer
+                    brushColor={brushColor}
+                    strokeWidth={brushSize}
+                    strokeOpacity={brushOpacity}
+                    gridOpacity={gridOpacity}
+                    onBrushColorChange={setBrushColor}
+                    onStrokeWidthChange={setBrushSize}
+                    onStrokeOpacityChange={setBrushOpacity}
+                    onGridOpacityChange={setGridOpacity}
+                    fillEnabled={fillEnabled}
+                    onFillToggle={() => setFillOn(!fillEnabled)}
+                  />
+                </div>
               </main>
             </div>
 
