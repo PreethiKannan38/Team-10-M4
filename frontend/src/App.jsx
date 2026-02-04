@@ -10,7 +10,7 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('landing');
+  const [currentPage, setCurrentPage] = useState('dashboard');
   const canvasEngineRef = useRef(null);
   const [activeTool, setActiveTool] = useState('draw');
   const [brushColor, setBrushColor] = useState('#8b5cf6');
