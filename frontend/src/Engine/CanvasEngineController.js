@@ -7,7 +7,6 @@
  */
 
 import * as Y from 'yjs';
-import { WebsocketProvider } from 'y-websocket';
 import { SceneManager } from './managers/SceneManager';
 import { LayerManager } from './managers/LayerManager';
 import { HistoryManager } from './managers/HistoryManager';
@@ -23,12 +22,7 @@ export class CanvasEngineController {
 
     // === YJS INITIALIZATION ===
     this.doc = new Y.Doc();
-    this.provider = new WebsocketProvider('ws://localhost:1234', 'drawing-room', this.doc);
     
-    this.provider.on('status', event => {
-      console.log('Yjs WebSocket Status:', event.status);
-    });
-
     this.yObjects = this.doc.getMap('objects');
     this.yLayers = this.doc.getArray('layers');
 
@@ -67,17 +61,12 @@ export class CanvasEngineController {
     this.setupWindowListeners();
     this.setupYjsListeners();
 
-    // Wait for sync before initializing
-    this.provider.on('sync', (isSynced) => {
-      if (isSynced) {
-        console.log('Yjs Synced');
-        if (this.yLayers.length === 0) {
-          this.createDefaultLayer();
-        } else {
-          this.syncFromYjs();
-        }
-      }
-    });
+    // Initial local initialization
+    if (this.yLayers.length === 0) {
+      this.createDefaultLayer();
+    } else {
+      this.syncFromYjs();
+    }
 
     this.isAnimationRunning = false;
     this.startRenderLoop();
@@ -612,7 +601,6 @@ export class CanvasEngineController {
 
   destroy() {
     this.isAnimationRunning = false;
-    this.provider.disconnect();
     this.doc.destroy();
   }
 }
