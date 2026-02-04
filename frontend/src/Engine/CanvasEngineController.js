@@ -582,6 +582,11 @@ export class CanvasEngineController {
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y') && e.shiftKey) { e.preventDefault(); this.redo(); }
+
+      // Pass keyboard events to current tool
+      if (this.currentTool && typeof this.currentTool.onKeyDown === 'function') {
+        this.currentTool.onKeyDown(e, this);
+      }
     });
 
     window.addEventListener('keyup', e => {

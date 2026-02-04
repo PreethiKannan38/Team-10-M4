@@ -47,6 +47,22 @@ export class BaseTool {
   }
 
   /**
+   * Handle keyboard down
+   * @param {KeyboardEvent} event
+   * @param {Object} engine
+   */
+  onKeyDown(event, engine) {
+    // Override in subclass
+  }
+
+  /**
+   * Called when tool is activated
+   */
+  onActivate() {
+    // Override in subclass
+  }
+
+  /**
    * Called when tool is deactivated
    */
   onDeactivate() {

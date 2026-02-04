@@ -54,8 +54,10 @@ export class TextTool extends BaseTool {
     if (!this.isEditing || !this.textPosition) return;
 
     if (event.key === 'Enter') {
+      event.preventDefault();
       this._commitText(engine);
     } else if (event.key === 'Backspace') {
+      event.preventDefault();
       this.currentText = this.currentText.slice(0, -1);
     } else if (event.key.length === 1) {
       this.currentText += event.key;

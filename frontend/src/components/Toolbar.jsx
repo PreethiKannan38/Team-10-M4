@@ -1,8 +1,9 @@
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Pencil, MousePointer2, Eraser, Square, Circle, Minus, Type, 
   PaintBucket, Pipette, Hand, Move, LassoSelect, 
   PenTool, Highlighter, Triangle, Hexagon, ArrowRight,
-  Undo2, Redo2, Trash2, Download
+  Undo2, Redo2, Trash2, Download, Sparkles
 } from 'lucide-react';
 
 const toolGroups = [
@@ -76,7 +77,11 @@ export default function Toolbar({ activeTool = 'draw', onToolChange, onAction })
   };
 
   return (
-    <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] p-3 flex flex-col gap-5 border border-slate-200 shadow-2xl w-20 items-center py-8 h-fit max-h-[90vh] overflow-y-auto custom-scrollbar">
+    <motion.div 
+      initial={{ x: -100, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] p-3 flex flex-col gap-5 border border-slate-200 shadow-2xl w-20 items-center py-8 h-fit max-h-[90vh] overflow-y-auto custom-scrollbar"
+    >
       {toolGroups.map((group, groupIdx) => (
         <div key={group.id} className="flex flex-col items-center gap-3 w-full">
           {groupIdx > 0 && <div className="w-10 h-[1px] bg-slate-100 my-1" />}
@@ -88,10 +93,12 @@ export default function Toolbar({ activeTool = 'draw', onToolChange, onAction })
               const groupColor = group.color;
 
               return (
-                <button
+                <motion.button
                   key={tool.id}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => handleToolClick(tool)}
-                  className={`group relative flex items-center justify-center w-14 h-14 rounded-[1.5rem] transition-all duration-300 ease-out active:scale-90 ${
+                  className={`group relative flex items-center justify-center w-14 h-14 rounded-[1.5rem] transition-all duration-300 ease-out ${
                     isActive
                       ? 'text-white shadow-[0_8px_20px_rgba(124,106,242,0.3)]' 
                       : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'
@@ -99,10 +106,15 @@ export default function Toolbar({ activeTool = 'draw', onToolChange, onAction })
                   style={isActive ? { backgroundColor: groupColor, boxShadow: `0 8px 25px ${groupColor}4D` } : {}}
                   title={`${tool.label} (${tool.shortcut})`}
                 >
-                  <Icon 
-                    className={`w-[1.4rem] h-[1.4rem] transition-all duration-300 ${isActive ? 'scale-110' : 'scale-100 group-hover:scale-110'}`} 
-                    strokeWidth={isActive ? 2.5 : 2} 
-                  />
+                  <motion.div
+                    animate={isActive ? { rotate: [0, -10, 10, 0] } : {}}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <Icon 
+                      className={`w-[1.4rem] h-[1.4rem] transition-all duration-300 ${isActive ? 'scale-110' : 'scale-100 group-hover:scale-110'}`} 
+                      strokeWidth={isActive ? 2.5 : 2} 
+                    />
+                  </motion.div>
                   
                   {/* Tooltip Label */}
                   <div className="absolute left-20 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-[10px] font-bold uppercase tracking-[0.1em] text-white opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 ease-out z-[100] whitespace-nowrap shadow-xl">
@@ -111,17 +123,20 @@ export default function Toolbar({ activeTool = 'draw', onToolChange, onAction })
 
                   {/* Active Halo Effect */}
                   {isActive && !isAction && (
-                    <div 
-                      className="absolute inset-0 rounded-[1.5rem] opacity-20 animate-pulse"
+                    <motion.div 
+                      layoutId="active-halo"
+                      className="absolute inset-0 rounded-[1.5rem] opacity-20"
                       style={{ backgroundColor: groupColor, filter: 'blur(10px)' }}
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
                     />
                   )}
-                </button>
+                </motion.button>
               );
             })}
           </div>
         </div>
       ))}
-    </div>
+    </motion.div>
   );
 }
