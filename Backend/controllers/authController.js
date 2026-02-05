@@ -90,3 +90,24 @@ export const getMe = async (req, res) => {
     };
     res.status(200).json(user);
 };
+
+// @desc    Update user password
+// @route   PUT /api/auth/update-password
+// @access  Private
+export const updatePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (user && (await user.matchPassword(currentPassword))) {
+            user.password = newPassword;
+            await user.save();
+            res.json({ message: 'Password updated successfully' });
+        } else {
+            res.status(401).json({ message: 'Invalid current password' });
+        }
+    } catch (error) {
+        console.error('Update Password Error:', error);
+        res.status(500).json({ message: 'Server error during password update' });
+    }
+};

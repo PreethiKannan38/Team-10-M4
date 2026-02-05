@@ -13,7 +13,7 @@ const FONTS = [
   { name: 'Cursive', value: 'cursive' }
 ];
 
-export default function Footer({ brushColor, strokeWidth, strokeOpacity, gridOpacity, fontFamily, onFontFamilyChange, onBrushColorChange, onStrokeWidthChange, onStrokeOpacityChange, onGridOpacityChange, fillEnabled, onFillToggle }) {
+export default function Footer({ brushColor, strokeWidth, strokeOpacity, gridOpacity, fontFamily, onFontFamilyChange, onBrushColorChange, onStrokeWidthChange, onStrokeOpacityChange, onGridOpacityChange, fillEnabled, onFillToggle, activeTool, eraserStrength, onEraserStrengthChange }) {
   return (
     <div className="w-[300px] bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl">
       <div className="p-6 flex items-center justify-between border-b border-slate-100 bg-slate-50/50">
@@ -35,6 +35,25 @@ export default function Footer({ brushColor, strokeWidth, strokeOpacity, gridOpa
       </div>
 
       <div className="p-6 space-y-8 overflow-y-auto max-h-[60vh] custom-scrollbar">
+        {/* Eraser Specific Property */}
+        {activeTool === 'eraser' && (
+          <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-3">
+            <div className="flex justify-between items-end">
+              <span className="text-[11px] font-black uppercase tracking-widest text-indigo-600">Eraser Strength</span>
+              <span className="text-[11px] font-mono font-bold text-indigo-700 bg-white px-2 py-0.5 rounded shadow-sm">{eraserStrength}%</span>
+            </div>
+            <input
+              type="range" min="0" max="100" value={eraserStrength}
+              onChange={(e) => onEraserStrengthChange?.(Number(e.target.value))}
+              className="w-full accent-indigo-600"
+            />
+            <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-indigo-400">
+              <span>Partial</span>
+              <span>Full Object</span>
+            </div>
+          </div>
+        )}
+
         {/* Colors */}
         <div className="space-y-4">
           <div className="flex justify-between items-center px-1">

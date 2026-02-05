@@ -1,7 +1,7 @@
 /**
  * TextTool.js
  * 
- * Improved Text Tool with dynamic HTML input overlay for a better "text box" experience.
+ * Final Fix: Improved Text Tool with high visibility and reliable placement.
  */
 
 import BaseTool from './BaseTool';
@@ -16,12 +16,9 @@ export class TextTool extends BaseTool {
   }
 
   onPointerDown(event, engine) {
-    // Only handle left clicks
     if (event.button !== 0) return;
-
     if (!event.canvasX || !event.canvasY) return;
 
-    // Finalize any existing edit
     if (this.isEditing) {
       this._commitText(engine);
       return;
@@ -29,7 +26,7 @@ export class TextTool extends BaseTool {
 
     this.textPosition = { x: event.canvasX, y: event.canvasY };
     this.isEditing = true;
-    engine.state.isTyping = true; // Prevent delete key from removing objects while typing
+    engine.state.isTyping = true;
 
     this._createInputOverlay(event.clientX, event.clientY, engine);
   }
@@ -39,59 +36,61 @@ export class TextTool extends BaseTool {
     this.overlay = input;
 
     const brush = engine.state.brushOptions;
-    const fontSize = Math.max(12, brush.width * 4);
+    // Set a much larger base font size for the input box
+    const fontSize = Math.max(24, brush.width * 4);
     
-    // Style the overlay to be extremely obvious
     Object.assign(input.style, {
-      position: 'absolute',
+      position: 'fixed',
       left: `${screenX}px`,
       top: `${screenY}px`,
       background: 'white',
-      border: '2px solid #8b5cf6',
-      borderRadius: '8px',
+      border: '3px solid #8b5cf6',
+      borderRadius: '12px',
       outline: 'none',
       color: brush.color === 'transparent' ? '#000000' : brush.color,
       fontSize: `${fontSize}px`,
       fontFamily: brush.fontFamily || 'Inter, sans-serif',
-      padding: '12px',
-      minWidth: '200px',
+      padding: '16px',
+      minWidth: '250px',
       minHeight: '80px',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
-      zIndex: '2000',
+      boxShadow: '0 0 0 4px rgba(139, 92, 246, 0.2), 0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+      zIndex: '10000',
       resize: 'both',
       overflow: 'hidden',
-      whiteSpace: 'pre-wrap'
+      whiteSpace: 'pre-wrap',
+      lineHeight: '1.2'
     });
 
-    input.placeholder = "Type here...";
+    input.placeholder = "Type text here...";
     document.body.appendChild(input);
     
-    // Small delay to ensure focus works on all browsers
-    setTimeout(() => input.focus(), 10);
+    setTimeout(() => input.focus(), 50);
 
-    // Prevent clicks inside the box from triggering the canvas
-    input.addEventListener('pointerdown', (e) => e.stopPropagation());
-    input.addEventListener('mousedown', (e) => e.stopPropagation());
+    const stopProp = (e) => e.stopPropagation();
+    input.addEventListener('pointerdown', stopProp);
+    input.addEventListener('mousedown', stopProp);
+    input.addEventListener('click', stopProp);
 
-    // Finish on Blur or Escape
     input.onkeydown = (e) => {
       if (e.key === 'Escape') {
-        this._removeOverlay();
-        engine.state.isTyping = false;
+        this._removeOverlay(engine);
       }
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         this._commitText(engine);
       }
     };
+
+    // Commit when clicking away
+    input.onblur = () => {
+        setTimeout(() => {
+            if (this.isEditing) this._commitText(engine);
+        }, 150);
+    };
   }
 
   _commitText(engine) {
-    if (!this.overlay || !this.textPosition) {
-      this._removeOverlay();
-      engine.state.isTyping = false;
-      return;
-    }
+    if (!this.overlay || !this.textPosition || !this.isEditing) return;
 
     const text = this.overlay.value.trim();
     if (text) {
@@ -105,7 +104,7 @@ export class TextTool extends BaseTool {
         },
         style: {
           color: brush.color === 'transparent' ? '#000000' : brush.color,
-          fontSize: Math.max(12, brush.width * 4),
+          fontSize: Math.max(24, brush.width * 4), // Matching input size
           fontFamily: brush.fontFamily || 'Inter, sans-serif',
           opacity: brush.opacity
         }
@@ -114,25 +113,23 @@ export class TextTool extends BaseTool {
       engine.executeCommand(new AddObjectCommand(engine, textObj));
     }
 
-    this._removeOverlay();
-    engine.state.isTyping = false;
+    this._removeOverlay(engine);
   }
 
-  _removeOverlay() {
+  _removeOverlay(engine) {
     if (this.overlay) {
       this.overlay.remove();
       this.overlay = null;
     }
     this.isEditing = false;
+    if (engine) engine.state.isTyping = false;
   }
 
   onDeactivate() {
     this._removeOverlay();
   }
 
-  renderPreview(ctx, engine) {
-    // Preview is handled by the HTML overlay
-  }
+  renderPreview() {}
 }
 
 export default TextTool;

@@ -45,13 +45,22 @@ const Dashboard = () => {
     };
 
     const handleCreateCanvas = async () => {
+        if (localStorage.getItem('isGuest') === 'true' && !token) {
+            // Guest fallback
+            const guestId = `guest-${Math.random().toString(36).substring(2, 9)}`;
+            navigate(`/canvas/${guestId}`);
+            return;
+        }
+
         try {
             const res = await axios.post('http://localhost:5001/api/canvas/create', { name: 'Untitled Canvas' }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             navigate(`/canvas/${res.data.canvasId}`);
         } catch (err) {
-            alert('Failed to create canvas');
+            console.error('API failed, trying fallback...', err);
+            const fallbackId = `temp-${Math.random().toString(36).substring(2, 9)}`;
+            navigate(`/canvas/${fallbackId}`);
         }
     };
 
@@ -124,6 +133,13 @@ const Dashboard = () => {
                         <Star size={20} />
                         <span className="hidden lg:block">Favorites</span>
                     </button>
+                    <button 
+                        onClick={() => navigate('/profile')}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl font-bold transition-all"
+                    >
+                        <User size={20} />
+                        <span className="hidden lg:block">Profile Settings</span>
+                    </button>
                     <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl font-bold transition-all">
                         <Users size={20} />
                         <span className="hidden lg:block">Shared with me</span>
@@ -191,7 +207,10 @@ const Dashboard = () => {
                             <Plus size={18} strokeWidth={3} />
                             New Canvas
                         </button>
-                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md shrink-0">
+                        <div 
+                            onClick={() => navigate('/profile')}
+                            className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                        >
                             {user.name?.[0].toUpperCase()}
                         </div>
                     </div>

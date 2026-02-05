@@ -8,8 +8,14 @@
   body {
     @apply bg-[#FAFAFC] text-slate-900;
     font-family: var(--font-inter);
+    font-size: 18px; /* Increased to 18px */
     -webkit-font-smoothing: antialiased;
   }
+  
+  h1 { @apply text-5xl font-black tracking-tight; }
+  h2 { @apply text-4xl font-extrabold tracking-tight; }
+  h3 { @apply text-3xl font-bold; }
+  p { @apply text-xl; }
 }
 
 @utility glass-panel {

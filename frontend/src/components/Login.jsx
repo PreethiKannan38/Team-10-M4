@@ -102,6 +102,25 @@ const Login = () => {
                                 </>
                             )}
                         </button>
+
+                        <div className="relative flex items-center gap-4 my-8">
+                            <div className="flex-1 h-px bg-slate-100" />
+                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">OR</span>
+                            <div className="flex-1 h-px bg-slate-100" />
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                localStorage.clear();
+                                localStorage.setItem('isGuest', 'true');
+                                localStorage.setItem('user', JSON.stringify({ name: `Guest_${Math.floor(Math.random() * 8999) + 1000}` }));
+                                window.location.href = '/dashboard';
+                            }}
+                            className="w-full bg-white border-2 border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 text-slate-600 rounded-2xl py-4 font-black tracking-widest uppercase text-xs transition-all active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            Continue as Guest
+                        </button>
                     </form>
 
                     <div className="mt-10 text-center text-sm font-medium text-slate-400">

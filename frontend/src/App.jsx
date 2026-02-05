@@ -8,13 +8,15 @@ import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Register from './components/Register';
 import LandingPage from './components/LandingPage';
+import Profile from './components/Profile';
 
 import axios from 'axios';
 
 // Simple Auth Guard
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  if (!token) {
+  const isGuest = localStorage.getItem('isGuest');
+  if (!token && !isGuest) {
     return <Navigate to="/login" replace />;
   }
   return children;
@@ -23,7 +25,8 @@ const ProtectedRoute = ({ children }) => {
 // Public Route Guard (redirects to dashboard if already logged in)
 const PublicRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  if (token) {
+  const isGuest = localStorage.getItem('isGuest');
+  if (token || isGuest) {
     return <Navigate to="/dashboard" replace />;
   }
   return children;
@@ -37,6 +40,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [brushSize, setBrushSize] = useState(5);
   const [brushOpacity, setBrushOpacity] = useState(100);
   const [fontFamily, setFontFamily] = useState('Inter, sans-serif');
+  const [eraserStrength, setEraserStrength] = useState(100);
   const [gridOpacity, setGridOpacity] = useState(30);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
@@ -168,6 +172,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
               brushSize={brushSize}
               brushOpacity={brushOpacity}
               fontFamily={fontFamily}
+              eraserStrength={eraserStrength}
               activeLayer={activeLayer}
               fillEnabled={fillEnabled}
               gridOpacity={gridOpacity}
@@ -192,6 +197,9 @@ function CanvasWorkspace({ canvasEngineRef }) {
               strokeOpacity={brushOpacity}
               gridOpacity={gridOpacity}
               fontFamily={fontFamily}
+              activeTool={activeTool}
+              eraserStrength={eraserStrength}
+              onEraserStrengthChange={setEraserStrength}
               onFontFamilyChange={setFontFamily}
               onBrushColorChange={setBrushColor}
               onStrokeWidthChange={setBrushSize}
@@ -247,6 +255,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           }
         />

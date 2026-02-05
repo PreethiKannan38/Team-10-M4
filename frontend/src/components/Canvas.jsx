@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { CanvasEngineController } from '../Engine/CanvasEngineController';
 
-export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, fontFamily, activeLayer, fillEnabled, gridOpacity, canvasId }) {
+export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, fontFamily, eraserStrength, activeLayer, fillEnabled, gridOpacity, canvasId }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -40,6 +40,7 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
       fontFamily: fontFamily
     });
 
+    engine.setEraserStrength(eraserStrength);
     engine.setTool(activeTool || 'draw');
 
     return () => {
@@ -58,6 +59,12 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
       });
     }
   }, [brushColor, brushSize, brushOpacity, fontFamily, canvasEngineRef]);
+
+  useEffect(() => {
+    if (canvasEngineRef?.current && eraserStrength !== undefined) {
+      canvasEngineRef.current.setEraserStrength(eraserStrength);
+    }
+  }, [eraserStrength, canvasEngineRef]);
 
   useEffect(() => {
     if (canvasEngineRef?.current && activeTool) {

@@ -51,6 +51,7 @@ export class CanvasEngineController {
       pan: { x: 0, y: 0 },
       activeLayerId: null,
       fillEnabled: false,
+      eraserStrength: 100, // Default to 100% (Full delete)
       gridOpacity: 0.15,
     };
 
@@ -373,6 +374,11 @@ export class CanvasEngineController {
     this.dispatchStateChange('fillEnabled', enabled);
   }
 
+  setEraserStrength(strength) {
+    this.state.eraserStrength = strength;
+    this.dispatchStateChange('eraserStrength', strength);
+  }
+
   setGridOpacity(opacity) {
     this.state.gridOpacity = opacity;
     this.render();
@@ -559,6 +565,7 @@ export class CanvasEngineController {
     } else if (type === 'text') {
       this.ctx.fillStyle = style?.color || '#000000';
       this.ctx.font = `${style.fontSize || 16}px ${style.fontFamily || 'Arial'}`;
+      this.ctx.textBaseline = 'hanging';
       this.ctx.fillText(geometry.text, geometry.x, geometry.y);
     }
 
