@@ -1,24 +1,33 @@
-# Team-10-M4
+# Design Deck - Collaborative Digital Canvas
 
-A real-time collaborative digital canvas that allows multiple users to draw and interact on a shared workspace using WebSockets and CRDT-based synchronization.
+A real-time collaborative digital canvas that allows multiple users to draw, brainstorm, and interact on a shared workspace using WebSockets and CRDT-based synchronization.
 
-## Project Structure
+## 🚀 New Features (v1.1)
+
+- **Landing Page**: Modern, minimal entry point with a clear onboarding flow.
+- **Advanced Dashboard**:
+  - **Search Bar**: Quickly find your workspaces.
+  - **Delete Workspaces**: Full control for owners to manage their projects.
+  - **View Modes**: Toggle between Grid and List views for better organization.
+  - **Improved UI**: Beautiful cards with timestamps and collaborator indicators.
+- **Port Conflict Fix**: Moved backend to port `5001` to avoid macOS AirPlay issues.
+- **Local Setup**: Pre-configured for local MongoDB for easy development.
+
+## 🛠️ Project Structure
 
 - `frontend/` - React-based client application.
 - `Backend/` - Express server with WebSocket support and MongoDB persistence.
 
-## Prerequisites
+## 📋 Prerequisites
 
 - **Node.js**: Installed on your system.
 - **MongoDB**: Ensure MongoDB is running locally on `mongodb://localhost:27017`.
 
-## Setup & Execution
-
-Both the frontend and backend must be running simultaneously for the application to function correctly.
+## ⚙️ Setup & Execution
 
 ### 1. Backend Setup
 
-The backend is configured to run on port **5001** (to avoid conflicts with macOS default services).
+The backend is configured to run on port **5001**.
 
 ```bash
 cd Backend
@@ -36,8 +45,7 @@ npm install
 npm run dev
 ```
 
-## Troubleshooting
+## 💡 Troubleshooting
 
-- **Database Connection**: If you cannot login, ensure your local MongoDB service is active.
-- **Port Conflicts**: If port 5001 is busy, you can change the `PORT` in `Backend/.env` and update the API URLs in the frontend.
-- **Environment Variables**: The `.env` file in the `Backend` folder contains the database connection string and JWT secret.
+- **Login/Registration**: Ensure the **Backend is running** in a separate terminal and your local MongoDB service is active.
+- **Environment**: The `.env` file is included in the repository for immediate use.
