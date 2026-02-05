@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { 
     User, Mail, Lock, Shield, ChevronLeft, 
-    CheckCircle2, AlertCircle, Loader2, LogOut 
+    CheckCircle2, AlertCircle, Loader2, LogOut, Edit2, Save
 } from 'lucide-react';
 
 const Profile = () => {
@@ -12,6 +12,8 @@ const Profile = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const isGuest = localStorage.getItem('isGuest') === 'true';
 
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [newName, setNewName] = useState(user.name || '');
     const [passwords, setPasswords] = useState({
         current: '',
         new: '',
@@ -46,6 +48,34 @@ const Profile = () => {
 
     const handleChange = (e) => {
         setPasswords({ ...passwords, [e.target.name]: e.target.value });
+    };
+
+    const handleUpdateName = async () => {
+        if (!newName.trim() || newName === user.name) {
+            setIsEditingName(false);
+            return;
+        }
+
+        setLoading(true);
+        setStatus({ type: '', message: '' });
+
+        try {
+            const res = await axios.put('http://localhost:5001/api/auth/update-profile', 
+                { name: newName }, 
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            // Update local storage
+            const updatedUser = { ...user, name: res.data.name };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            
+            setStatus({ type: 'success', message: 'Profile updated successfully!' });
+            setIsEditingName(false);
+        } catch (err) {
+            setStatus({ type: 'error', message: err.response?.data?.message || 'Failed to update name' });
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleUpdatePassword = async (e) => {
@@ -92,8 +122,45 @@ const Profile = () => {
                             <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center text-white text-3xl font-black mb-6 shadow-2xl shadow-indigo-100 border-4 border-white">
                                 {user.name?.[0].toUpperCase()}
                             </div>
-                            <h2 className="text-2xl font-black mb-1">{user.name}</h2>
-                            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-8">{user.email}</p>
+                            
+                            {isEditingName ? (
+                                <div className="flex flex-col gap-2 w-full mb-4">
+                                    <input 
+                                        type="text" 
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        className="w-full text-center bg-slate-50 border-2 border-indigo-100 rounded-xl py-2 px-4 font-bold outline-none focus:border-indigo-500 transition-all"
+                                        autoFocus
+                                    />
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={handleUpdateName}
+                                            className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                                        >
+                                            <Save size={14} /> Save
+                                        </button>
+                                        <button 
+                                            onClick={() => { setIsEditingName(false); setNewName(user.name); }}
+                                            className="flex-1 bg-slate-100 text-slate-400 py-2 rounded-xl text-xs font-black uppercase tracking-widest"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center mb-8 group">
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-2xl font-black">{user.name}</h2>
+                                        <button 
+                                            onClick={() => setIsEditingName(true)}
+                                            className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                        >
+                                            <Edit2 size={16} />
+                                        </button>
+                                    </div>
+                                    <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">{user.email}</p>
+                                </div>
+                            )}
                             
                             <button 
                                 onClick={() => { localStorage.clear(); window.location.href = '/'; }}

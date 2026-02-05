@@ -15,17 +15,20 @@ import axios from 'axios';
 // Simple Auth Guard
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  const isGuest = localStorage.getItem('isGuest');
+  const isGuest = localStorage.getItem('isGuest') === 'true';
+  
+  // If neither, go to login
   if (!token && !isGuest) {
     return <Navigate to="/login" replace />;
   }
   return children;
 };
 
-// Public Route Guard (redirects to dashboard if already logged in)
+// Public Route Guard
 const PublicRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  const isGuest = localStorage.getItem('isGuest');
+  const isGuest = localStorage.getItem('isGuest') === 'true';
+  
   if (token || isGuest) {
     return <Navigate to="/dashboard" replace />;
   }

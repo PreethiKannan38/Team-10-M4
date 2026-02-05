@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function TopBar({ onClear, onDashboard, onLogout, canvasName, onNameChange }) {
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(canvasName || 'Untitled Canvas');
+  const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -30,7 +32,7 @@ export default function TopBar({ onClear, onDashboard, onLogout, canvasName, onN
             <div className="w-3.5 h-3.5 bg-white/30 rounded-sm -rotate-45"></div>
           </div>
           <span className="font-black text-lg text-slate-900 tracking-[-0.02em] ml-1">
-            DesignDeck
+            Design Deck
           </span>
         </div>
 
@@ -73,7 +75,7 @@ export default function TopBar({ onClear, onDashboard, onLogout, canvasName, onN
             onClick={onClear}
             className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
           >
-            Clear
+            Clear Canvas
           </button>
 
           <button className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
@@ -82,7 +84,7 @@ export default function TopBar({ onClear, onDashboard, onLogout, canvasName, onN
 
           <button className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg shadow-indigo-100 transition-all active:scale-95">
             <Share2 className="w-3.5 h-3.5" />
-            <span>Share</span>
+            <span>Share Room</span>
           </button>
 
           <button className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 ml-1">
@@ -95,10 +97,13 @@ export default function TopBar({ onClear, onDashboard, onLogout, canvasName, onN
         {/* User Profile */}
         <div className="flex items-center gap-3 pl-2">
           <div className="text-right hidden sm:block">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Editor</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Editor Role</p>
             <p className="text-xs font-bold text-slate-700 leading-none">{user.name || 'Guest User'}</p>
           </div>
-          <div className="relative group cursor-pointer">
+          <div 
+            className="relative group cursor-pointer"
+            onClick={() => navigate('/profile')}
+          >
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-100 group-hover:scale-105 transition-transform">
               <User size={20} />
             </div>
@@ -108,7 +113,7 @@ export default function TopBar({ onClear, onDashboard, onLogout, canvasName, onN
           <button
             onClick={onLogout}
             className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-600 hover:bg-red-50 transition-all active:scale-90 ml-1"
-            title="Logout"
+            title="Logout Account"
           >
             <LogOut className="w-4 h-4" />
           </button>

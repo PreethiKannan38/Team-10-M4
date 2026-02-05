@@ -112,10 +112,11 @@ const Login = () => {
                         <button
                             type="button"
                             onClick={() => {
+                                const guestId = `guest-${Math.random().toString(36).substring(2, 9)}`;
                                 localStorage.clear();
                                 localStorage.setItem('isGuest', 'true');
                                 localStorage.setItem('user', JSON.stringify({ name: `Guest_${Math.floor(Math.random() * 8999) + 1000}` }));
-                                window.location.href = '/dashboard';
+                                window.location.assign(`/canvas/${guestId}`);
                             }}
                             className="w-full bg-white border-2 border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 text-slate-600 rounded-2xl py-4 font-black tracking-widest uppercase text-xs transition-all active:scale-95 flex items-center justify-center gap-2"
                         >
