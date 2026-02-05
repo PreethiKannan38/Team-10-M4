@@ -7,6 +7,7 @@ import Canvas from './components/Canvas';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Register from './components/Register';
+import LandingPage from './components/LandingPage';
 
 import axios from 'axios';
 
@@ -15,6 +16,15 @@ const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   if (!token) {
     return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+// Public Route Guard (redirects to dashboard if already logged in)
+const PublicRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 };
@@ -42,7 +52,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await axios.get(`http://localhost:5000/api/canvas/${canvasId}`, {
+      const res = await axios.get(`http://localhost:5001/api/canvas/${canvasId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCanvasMetadata(res.data);
@@ -55,7 +65,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await axios.put(`http://localhost:5000/api/canvas/${canvasId}/name`,
+      const res = await axios.put(`http://localhost:5001/api/canvas/${canvasId}/name`,
         { name: newName },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -126,7 +136,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           canvasName={canvasMetadata?.name} // Passed canvasName
           onNameChange={handleNameChange} // Passed onNameChange
           onClear={clearCanvas}
-          onDashboard={() => navigate('/')}
+          onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout} // Used the extracted onLogout
         />
       </div>
@@ -217,10 +227,19 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        } />
+        <Route path="/register" element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        } />
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
@@ -235,6 +254,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

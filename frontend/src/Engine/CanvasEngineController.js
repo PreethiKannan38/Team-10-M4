@@ -23,7 +23,7 @@ export class CanvasEngineController {
 
     // === YJS INITIALIZATION ===
     this.doc = new Y.Doc();
-    this.provider = new WebsocketProvider('ws://localhost:5000', roomId, this.doc);
+    this.provider = new WebsocketProvider('ws://localhost:5001', roomId, this.doc);
 
     this.provider.on('status', event => {
       console.log('Yjs WebSocket Status:', event.status);
