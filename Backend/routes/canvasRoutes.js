@@ -1,5 +1,5 @@
 import express from 'express';
-import { createCanvas, getCanvas, getMyCanvases, inviteUser, updateCanvasName, deleteCanvas } from '../controllers/canvasController.js';
+import { createCanvas, getCanvas, getMyCanvases, inviteUser, updateCanvasName, deleteCanvas, toggleFavorite } from '../controllers/canvasController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -10,5 +10,6 @@ router.get('/:id', protect, getCanvas);
 router.post('/:id/invite', protect, inviteUser);
 router.put('/:id/name', protect, updateCanvasName);
 router.delete('/:id', protect, deleteCanvas);
+router.put('/:id/favorite', protect, toggleFavorite);
 
 export default router;

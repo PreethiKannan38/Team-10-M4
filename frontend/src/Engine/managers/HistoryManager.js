@@ -208,18 +208,23 @@ export class RemoveObjectCommand extends Command {
   }
 
   execute() {
-    this.objectData = { ...this.engine.getObject(this.objectId) };
-    this.engine.removeObject(this.objectId);
+    this.objectData = this.engine.getObject(this.objectId);
+    if (this.objectData) {
+      // Store a deep copy to be safe
+      this.objectData = JSON.parse(JSON.stringify(this.objectData));
+      this.engine.removeObject(this.objectId);
+    }
   }
 
   undo() {
     if (this.objectData) {
+      // Use internal addObject logic that preserves ID and layer
       this.engine.addObject(this.objectData);
     }
   }
 
   redo() {
-    this.execute();
+    this.engine.removeObject(this.objectId);
   }
 }
 

@@ -36,6 +36,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [brushColor, setBrushColor] = useState('#8b5cf6');
   const [brushSize, setBrushSize] = useState(5);
   const [brushOpacity, setBrushOpacity] = useState(100);
+  const [fontFamily, setFontFamily] = useState('Inter, sans-serif');
   const [gridOpacity, setGridOpacity] = useState(30);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
@@ -144,7 +145,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
       <div className="flex-1 flex overflow-hidden relative">
         <button
           onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-          className={`absolute top-1/2 -translate-y-1/2 z-30 w-8 h-25 bg-white/80 backdrop-blur-md border border-slate-200 border-l-0 rounded-r-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isToolbarOpen ? 'left-[90px]' : 'left-0'}`}
+          className={`absolute top-1/2 -translate-y-1/2 z-30 w-8 h-25 bg-white/80 backdrop-blur-md border border-slate-200 border-l-0 rounded-r-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isToolbarOpen ? 'left-[112px]' : 'left-0'}`}
         >
           <div className={`transition-transform duration-500 ${isToolbarOpen ? '' : 'rotate-180'}`}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
@@ -166,6 +167,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
               brushColor={brushColor}
               brushSize={brushSize}
               brushOpacity={brushOpacity}
+              fontFamily={fontFamily}
               activeLayer={activeLayer}
               fillEnabled={fillEnabled}
               gridOpacity={gridOpacity}
@@ -189,6 +191,8 @@ function CanvasWorkspace({ canvasEngineRef }) {
               strokeWidth={brushSize}
               strokeOpacity={brushOpacity}
               gridOpacity={gridOpacity}
+              fontFamily={fontFamily}
+              onFontFamilyChange={setFontFamily}
               onBrushColorChange={setBrushColor}
               onStrokeWidthChange={setBrushSize}
               onStrokeOpacityChange={setBrushOpacity}

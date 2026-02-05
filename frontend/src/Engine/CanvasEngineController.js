@@ -10,7 +10,7 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { SceneManager } from './managers/SceneManager';
 import { LayerManager } from './managers/LayerManager';
-import { HistoryManager } from './managers/HistoryManager';
+import { HistoryManager, RemoveObjectCommand } from './managers/HistoryManager';
 import { CoordinateMapper } from './utils/CoordinateMapper';
 import { BoundsCalculation } from './utils/BoundsCalculation';
 import ToolManager from './ToolManager';
@@ -43,6 +43,7 @@ export class CanvasEngineController {
         color: '#217BF4',
         width: 5,
         opacity: 1.0,
+        fontFamily: 'Inter, sans-serif',
         smoothing: 0.4,
         hardness: 1.0,
       },
@@ -483,11 +484,6 @@ export class CanvasEngineController {
       this.currentTool.renderPreview(this.ctx, this);
     }
     this.ctx.restore();
-
-    // Render On-Canvas Feedback (Fixed Screen Space)
-    if (this.feedbackActive) {
-      this.renderFeedback();
-    }
   }
 
   renderGrid() {
@@ -522,26 +518,6 @@ export class CanvasEngineController {
       this.ctx.lineTo(endX, y);
     }
     this.ctx.stroke();
-  }
-
-  renderFeedback() {
-    const { width, opacity } = this.state.brushOptions;
-    const x = this.canvas.width / 2;
-    const y = this.canvas.height - 150;
-
-    this.ctx.save();
-    this.ctx.font = 'bold 12px Inter';
-    this.ctx.textAlign = 'center';
-
-    // Size Indicator
-    this.ctx.fillStyle = 'rgba(139, 92, 246, 0.8)';
-    this.ctx.beginPath();
-    this.ctx.arc(x, y, width / 2, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    this.ctx.fillStyle = 'white';
-    this.ctx.fillText(`${width}px • ${Math.round(opacity * 100)}%`, x, y + width / 2 + 20);
-    this.ctx.restore();
   }
 
   renderObject(obj) {
@@ -654,6 +630,15 @@ export class CanvasEngineController {
         this.spacePressed = true;
         this.canvas.style.cursor = 'grab';
       }
+      
+      // Delete selected object
+      if ((e.key === 'Delete' || e.key === 'Backspace') && this.state.selectedObjectId && !this.state.isTyping) {
+        e.preventDefault();
+        this.executeCommand(new RemoveObjectCommand(this, this.state.selectedObjectId));
+        this.state.selectedObjectId = null;
+        this.dispatchStateChange('selection', null);
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y') && e.shiftKey) { e.preventDefault(); this.redo(); }
     });

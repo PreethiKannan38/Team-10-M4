@@ -31,6 +31,10 @@ const canvasSchema = new mongoose.Schema({
         type: Buffer, // Stores the binary Yjs update
         default: null,
     },
+    isFavorite: {
+        type: Boolean,
+        default: false,
+    }
 }, { timestamps: true });
 
 const Canvas = mongoose.model('Canvas', canvasSchema);

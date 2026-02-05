@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { CanvasEngineController } from '../Engine/CanvasEngineController';
 
-export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, activeLayer, fillEnabled, gridOpacity, canvasId }) {
+export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, fontFamily, activeLayer, fillEnabled, gridOpacity, canvasId }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -37,6 +37,7 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
       color: brushColor,
       width: brushSize,
       opacity: brushOpacity / 100,
+      fontFamily: fontFamily
     });
 
     engine.setTool(activeTool || 'draw');
@@ -48,14 +49,15 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
   }, [canvasId]);
 
   useEffect(() => {
-    if (canvasEngineRef?.current && (brushColor || brushSize || brushOpacity !== undefined)) {
+    if (canvasEngineRef?.current && (brushColor || brushSize || brushOpacity !== undefined || fontFamily)) {
       canvasEngineRef.current.setBrushOptions({
         color: brushColor,
         width: brushSize,
         opacity: brushOpacity / 100,
+        fontFamily: fontFamily
       });
     }
-  }, [brushColor, brushSize, brushOpacity, canvasEngineRef]);
+  }, [brushColor, brushSize, brushOpacity, fontFamily, canvasEngineRef]);
 
   useEffect(() => {
     if (canvasEngineRef?.current && activeTool) {
