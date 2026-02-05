@@ -1,7 +1,7 @@
 /**
  * TextTool.js
  * 
- * High-Stability Version: Supports Drag-to-Create and accurate selection bounds.
+ * Bulletproof Fix: Click and Drag to create, released to type.
  */
 
 import BaseTool from './BaseTool';
@@ -12,19 +12,19 @@ export class TextTool extends BaseTool {
     super(engine);
     this.isDragging = false;
     this.isEditing = false;
-    this.editingObjectId = null;
     this.startPoint = null;
     this.endPoint = null;
     this.overlay = null;
-    this.backdrop = null;
+    this.editingObjectId = null;
   }
 
   onPointerDown(event, engine) {
     if (event.button !== 0) return;
     
-    // Commit existing before starting new
+    // If we were already editing, commit it
     if (this.isEditing) {
       this._commitText(engine);
+      return;
     }
 
     this.isDragging = true;
@@ -42,67 +42,98 @@ export class TextTool extends BaseTool {
     if (!this.isDragging || !this.startPoint) return;
     this.isDragging = false;
 
+    // Check if it's a drag or just a click
+    const width = Math.abs(this.endPoint.x - this.startPoint.x);
+    const height = Math.abs(this.endPoint.y - this.startPoint.y);
+
+    // If it's a tiny click, provide a reasonable default size
+    if (width < 5 && height < 5) {
+        this.endPoint = { 
+            x: this.startPoint.x + 300, 
+            y: this.startPoint.y + 120 
+        };
+    }
+
     this.isEditing = true;
     engine.state.isTyping = true;
 
-    // Use absolute viewport coordinates for CSS
-    const rect = engine.canvas.getBoundingClientRect();
-    const x = Math.min(this.startPoint.x, this.endPoint.x) * engine.state.zoom + engine.state.pan.x + rect.left;
-    const y = Math.min(this.startPoint.y, this.endPoint.y) * engine.state.zoom + engine.state.pan.y + rect.top;
-    const w = Math.max(Math.abs(this.endPoint.x - this.startPoint.x) * engine.state.zoom, 250);
-    const h = Math.max(Math.abs(this.endPoint.y - this.startPoint.y) * engine.state.zoom, 100);
-
-    this._createInputOverlay(x, y, w, h, '', engine);
+    // Create the input overlay
+    this._createInputOverlay(engine);
   }
 
   startEditingExisting(obj, screenX, screenY, engine) {
     this._removeOverlay(engine);
     this.isEditing = true;
     this.editingObjectId = obj.id;
+    this.startPoint = { x: obj.geometry.x, y: obj.geometry.y };
+    this.endPoint = { 
+        x: obj.geometry.x + (obj.geometry.width || 300), 
+        y: obj.geometry.y + (obj.geometry.height || 120) 
+    };
     engine.state.isTyping = true;
-
-    const rect = engine.canvas.getBoundingClientRect();
-    const x = obj.geometry.x * engine.state.zoom + engine.state.pan.x + rect.left;
-    const y = obj.geometry.y * engine.state.zoom + engine.state.pan.y + rect.top;
-    const w = (obj.geometry.width || 200) * engine.state.zoom;
-    const h = (obj.geometry.height || 100) * engine.state.zoom;
-
-    this._createInputOverlay(x, y, w, h, obj.geometry.text, engine);
+    this._createInputOverlay(engine, obj.geometry.text);
   }
 
-  _createInputOverlay(x, y, w, h, initialText, engine) {
-    const backdrop = document.createElement('div');
-    Object.assign(backdrop.style, {
-        position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.1)', zIndex: '2147483640'
-    });
-    document.body.appendChild(backdrop);
-    this.backdrop = backdrop;
-
+  _createInputOverlay(engine, initialText = '') {
     const input = document.createElement('textarea');
     this.overlay = input;
+
+    // Calculate screen position
+    const rect = engine.canvas.getBoundingClientRect();
+    const x = Math.min(this.startPoint.x, this.endPoint.x) * engine.state.zoom + engine.state.pan.x + rect.left;
+    const y = Math.min(this.startPoint.y, this.endPoint.y) * engine.state.zoom + engine.state.pan.y + rect.top;
+    const w = Math.abs(this.endPoint.x - this.startPoint.x) * engine.state.zoom;
+    const h = Math.abs(this.endPoint.y - this.startPoint.y) * engine.state.zoom;
+
     const brush = engine.state.brushOptions;
     
     Object.assign(input.style, {
-      position: 'fixed', left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`,
-      background: 'white', color: '#000', border: '4px solid #6366F1', borderRadius: '12px',
-      fontSize: '24px', padding: '16px', zIndex: '2147483647', resize: 'both', outline: 'none',
+      position: 'fixed',
+      left: `${x}px`,
+      top: `${y}px`,
+      width: `${Math.max(w, 200)}px`,
+      height: `${Math.max(h, 80)}px`,
+      background: 'white',
+      color: '#000',
+      border: '4px solid #6366F1',
+      borderRadius: '12px',
+      fontSize: '24px',
       fontFamily: brush.fontFamily || 'Inter, sans-serif',
-      boxShadow: '0 20px 50px rgba(0,0,0,0.3)'
+      padding: '16px',
+      zIndex: '2147483647',
+      boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+      outline: 'none',
+      resize: 'both'
     });
 
-    input.value = initialText || '';
+    input.value = initialText;
     input.placeholder = "Type Your Text Here...";
     document.body.appendChild(input);
+    
     setTimeout(() => input.focus(), 20);
 
-    const stop = (e) => e.stopPropagation();
-    input.addEventListener('mousedown', stop);
-    backdrop.addEventListener('mousedown', () => this._commitText(engine));
+    // Prevent click-through to canvas
+    input.addEventListener('mousedown', (e) => e.stopPropagation());
+    input.addEventListener('pointerdown', (e) => e.stopPropagation());
 
     input.onkeydown = (e) => {
-      if (e.key === 'Escape') this._removeOverlay(engine);
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this._commitText(engine); }
+      if (e.key === 'Escape') {
+        this._removeOverlay(engine);
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this._commitText(engine);
+      }
     };
+
+    // Auto-save on click away (global listener)
+    const clickAway = (e) => {
+        if (this.overlay && !this.overlay.contains(e.target)) {
+            this._commitText(engine);
+            window.removeEventListener('mousedown', clickAway);
+        }
+    };
+    window.addEventListener('mousedown', clickAway);
   }
 
   _commitText(engine) {
@@ -112,8 +143,8 @@ export class TextTool extends BaseTool {
     if (text) {
       const brush = engine.state.brushOptions;
       const geometry = {
-        x: this.editingObjectId ? engine.getObject(this.editingObjectId).geometry.x : Math.min(this.startPoint.x, this.endPoint.x),
-        y: this.editingObjectId ? engine.getObject(this.editingObjectId).geometry.y : Math.min(this.startPoint.y, this.endPoint.y),
+        x: Math.min(this.startPoint.x, this.endPoint.x),
+        y: Math.min(this.startPoint.y, this.endPoint.y),
         width: this.overlay.offsetWidth / engine.state.zoom,
         height: this.overlay.offsetHeight / engine.state.zoom,
         text
@@ -125,17 +156,25 @@ export class TextTool extends BaseTool {
         engine.executeCommand(new AddObjectCommand(engine, {
           type: 'text',
           geometry,
-          style: { color: brush.color, fontSize: 24, fontFamily: brush.fontFamily || 'Inter' }
+          style: { 
+            color: brush.color === 'transparent' ? '#000000' : brush.color, 
+            fontSize: 24, 
+            fontFamily: brush.fontFamily || 'Inter' 
+          }
         }));
       }
     }
+
     this._removeOverlay(engine);
   }
 
   _removeOverlay(engine) {
-    if (this.overlay) this.overlay.remove();
-    if (this.backdrop) this.backdrop.remove();
-    this.overlay = null; this.backdrop = null; this.isEditing = false; this.editingObjectId = null;
+    if (this.overlay) {
+      this.overlay.remove();
+      this.overlay = null;
+    }
+    this.isEditing = false;
+    this.editingObjectId = null;
     if (engine) engine.state.isTyping = false;
   }
 
@@ -144,7 +183,9 @@ export class TextTool extends BaseTool {
   renderPreview(ctx, engine) {
     if (!this.isDragging || !this.startPoint || !this.endPoint) return;
     ctx.save();
-    ctx.strokeStyle = '#6366F1'; ctx.lineWidth = 3; ctx.setLineDash([8, 4]);
+    ctx.strokeStyle = '#6366F1';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
     const x = Math.min(this.startPoint.x, this.endPoint.x);
     const y = Math.min(this.startPoint.y, this.endPoint.y);
     const w = Math.abs(this.endPoint.x - this.startPoint.x);

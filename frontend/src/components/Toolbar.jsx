@@ -1,74 +1,81 @@
 import { useState } from 'react'
 import {
-  Pencil,MousePointer2,Eraser,Square,Circle,Type,PaintBucket,Move,PenTool,Triangle,Hexagon,
-  Undo2,Redo2,Trash2,Download,Brush
+  Pencil, MousePointer2, Eraser, Square, Circle, Type, PaintBucket, Move, PenTool, Triangle, Hexagon,
+  Undo2, Redo2, Trash2, Download, Brush
 } from 'lucide-react'
 
 const toolGroups = [
   {
     id: 'selection',
+    name: 'Selection Tools',
     color: '#6B7A99',
     popup: true,
     groupIcon: MousePointer2,
     tools: [
-      { id: 'select', icon: MousePointer2 },
-      { id: 'move', icon: Move }
+      { id: 'select', icon: MousePointer2, name: 'Select Tool' },
+      { id: 'move', icon: Move, name: 'Move Tool' }
     ]
   },
   {
     id: 'drawing',
+    name: 'Drawing Tools',
     color: '#7C6AF2',
     popup: true,
     groupIcon: Brush,
     tools: [
-      { id: 'draw', icon: PenTool },
-      { id: 'pencil', icon: Pencil }
+      { id: 'draw', icon: PenTool, name: 'Brush Tool' },
+      { id: 'pencil', icon: Pencil, name: 'Pencil Tool' }
     ]
   },
   {
     id: 'shapes',
+    name: 'Shape Tools',
     color: '#444A5A',
     popup: true,
     groupIcon: Hexagon,
     tools: [
-      { id: 'rectangle', icon: Square },
-      { id: 'circle', icon: Circle },
-      { id: 'triangle', icon: Triangle },
-      { id: 'polygon', icon: Hexagon }
+      { id: 'rectangle', icon: Square, name: 'Rectangle Tool' },
+      { id: 'circle', icon: Circle, name: 'Circle Tool' },
+      { id: 'triangle', icon: Triangle, name: 'Triangle Tool' },
+      { id: 'polygon', icon: Hexagon, name: 'Polygon Tool' }
     ]
   },
   {
     id: 'utility',
+    name: 'Utility Tools',
     color: '#444A5A',
     popup: false,
     tools: [
-      { id: 'fill', icon: PaintBucket },
-      { id: 'text', icon: Type }
+      { id: 'fill', icon: PaintBucket, name: 'Fill Tool' },
+      { id: 'text', icon: Type, name: 'Text Tool' }
     ]
   },
   {
     id: 'destructive',
+    name: 'Editing Tools',
     color: '#F26D6D',
     popup: false,
     tools: [
-      { id: 'eraser', icon: Eraser },
-      { id: 'clear', icon: Trash2 }
+      { id: 'eraser', icon: Eraser, name: 'Eraser Tool' },
+      { id: 'clear', icon: Trash2, name: 'Clear Canvas' }
     ]
   },
   {
-    id: 'editing',
+    id: 'history',
+    name: 'History Tools',
     color: '#444A5A',
     popup: false,
     tools: [
-      { id: 'undo', icon: Undo2 },
-      { id: 'redo', icon: Redo2 },
-      { id: 'export', icon: Download }
+      { id: 'undo', icon: Undo2, name: 'Undo Action' },
+      { id: 'redo', icon: Redo2, name: 'Redo Action' },
+      { id: 'export', icon: Download, name: 'Download Canvas' }
     ]
   }
 ]
 
 export default function Toolbar({ activeTool, onToolChange, onAction }) {
   const [openPopup, setOpenPopup] = useState(null)
+  const [hoveredTool, setHoveredTool] = useState(null)
 
   const togglePopup = (id) => {
     setOpenPopup(prev => (prev === id ? null : id))
@@ -85,7 +92,7 @@ export default function Toolbar({ activeTool, onToolChange, onAction }) {
                     w-16 p-3 py-8
                     flex flex-col items-center gap-2
                     border border-slate-200 shadow-2xl
-                    relative ">
+                    relative z-[100]">
 
       {toolGroups.map((group, i) => {
         const isOpen = openPopup === group.id
@@ -96,50 +103,67 @@ export default function Toolbar({ activeTool, onToolChange, onAction }) {
 
             {/* POPUP TOGGLE */}
             {group.popup && (
-              <button
-                onClick={() => togglePopup(group.id)}
-                className={`w-12 h-12 border rounded-2xl
-                  flex items-center justify-center
-                  transition-all active:scale-90
-                  ${isOpen
-                    ? 'bg-slate-200 text-slate-700'
-                    : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'
-                  }`}
-              >
-                {(() => {
-                  const GroupIcon = group.groupIcon
-                  return <GroupIcon className="w-6 h-6" />
-                })()}
-              </button>
+              <div className="relative group/tooltip">
+                <button
+                  onClick={() => togglePopup(group.id)}
+                  onMouseEnter={() => setHoveredTool(group.name)}
+                  onMouseLeave={() => setHoveredTool(null)}
+                  className={`w-12 h-12 border rounded-2xl
+                    flex items-center justify-center
+                    transition-all active:scale-90
+                    ${isOpen
+                      ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
+                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50 border-transparent'
+                    }`}
+                >
+                  <group.groupIcon className="w-6 h-6" />
+                </button>
+                
+                {/* Custom Tooltip */}
+                {!isOpen && hoveredTool === group.name && (
+                  <div className="absolute left-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg whitespace-nowrap shadow-xl animate-in fade-in zoom-in duration-200 pointer-events-none">
+                    {group.name}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* SIDE POPUP */}
             {group.popup && isOpen && (
               <div
                 className="absolute left-16 top-0
-                           bg-white rounded-2xl p-2
+                           bg-white rounded-3xl p-2
                            flex flex-col gap-2
-                           shadow-2xl border border-slate-200 z-50 ml-2"
+                           shadow-2xl border border-slate-200 z-50 ml-2 animate-in slide-in-from-left-2 duration-300"
               >
                 {group.tools.map((tool) => {
                   const Icon = tool.icon
                   const isActive = activeTool === tool.id
 
                   return (
-                    <button
-                      key={tool.id}
-                      onClick={() => handleToolClick(tool)}
-                      className={`w-14 h-14 rounded-2xl
-                        flex items-center justify-center
-                        transition-all active:scale-90
-                        ${isActive
-                          ? 'text-white'
-                          : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                        }`}
-                      style={isActive ? { backgroundColor: group.color } : {}}
-                    >
-                      <Icon className="w-6 h-6" />
-                    </button>
+                    <div key={tool.id} className="relative group/subtooltip">
+                      <button
+                        onClick={() => handleToolClick(tool)}
+                        onMouseEnter={() => setHoveredTool(tool.name)}
+                        onMouseLeave={() => setHoveredTool(null)}
+                        className={`w-14 h-14 rounded-2xl
+                          flex items-center justify-center
+                          transition-all active:scale-90
+                          ${isActive
+                            ? 'text-white'
+                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                          }`}
+                        style={isActive ? { backgroundColor: group.color } : {}}
+                      >
+                        <Icon className="w-6 h-6" />
+                      </button>
+                      
+                      {hoveredTool === tool.name && (
+                        <div className="absolute left-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg whitespace-nowrap shadow-xl z-[60]">
+                          {tool.name}
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>
@@ -153,18 +177,27 @@ export default function Toolbar({ activeTool, onToolChange, onAction }) {
                   const isActive = activeTool === tool.id
 
                   return (
-                    <button
-                      key={tool.id}
-                      onClick={() => handleToolClick(tool)}
-                      className={`w-12 h-12 rounded-2xl
-                                 flex items-center justify-center
-                                 transition-all active:scale-90
-                                 ${isActive 
-                                   ? 'bg-indigo-600 text-white' 
-                                   : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}
-                    >
-                      <Icon className="w-6 h-6" />
-                    </button>
+                    <div key={tool.id} className="relative group/tooltip">
+                      <button
+                        onClick={() => handleToolClick(tool)}
+                        onMouseEnter={() => setHoveredTool(tool.name)}
+                        onMouseLeave={() => setHoveredTool(null)}
+                        className={`w-12 h-12 rounded-2xl
+                                   flex items-center justify-center
+                                   transition-all active:scale-90
+                                   ${isActive 
+                                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                                     : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}
+                      >
+                        <Icon className="w-6 h-6" />
+                      </button>
+                      
+                      {hoveredTool === tool.name && (
+                        <div className="absolute left-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg whitespace-nowrap shadow-xl pointer-events-none">
+                          {tool.name}
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>
