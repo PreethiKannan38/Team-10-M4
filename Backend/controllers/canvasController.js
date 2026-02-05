@@ -112,3 +112,40 @@ export const inviteUser = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+// @desc    Update canvas name
+// @route   PUT /api/canvas/:id/name
+// @access  Private
+export const updateCanvasName = async (req, res) => {
+    const { name } = req.body;
+    const { id } = req.params;
+
+    console.log(`[API] Attempting to update canvas name. ID: ${id}, New Name: ${name}, User: ${req.user._id}`);
+
+    try {
+        const canvas = await Canvas.findOne({ canvasId: id });
+
+        if (!canvas) {
+            console.log(`[API] Canvas ${id} not found in DB`);
+            return res.status(404).json({ message: 'Canvas not found' });
+        }
+
+        // Only owner can update name
+        // Use toString() to be safe with ObjectId comparison if needed, or stick to .equals
+        const isOwner = canvas.owner.toString() === req.user._id.toString();
+
+        console.log(`[API] Ownership Check - Owner: ${canvas.owner}, Requestor: ${req.user._id}, Match: ${isOwner}`);
+
+        if (!isOwner) {
+            return res.status(403).json({ message: 'Only owner can update canvas name' });
+        }
+
+        canvas.name = name;
+        const updatedCanvas = await canvas.save();
+
+        console.log(`[API] Canvas name updated successfully: ${updatedCanvas.name}`);
+        res.json(updatedCanvas);
+    } catch (error) {
+        console.error('[API] Update Canvas Name Error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};

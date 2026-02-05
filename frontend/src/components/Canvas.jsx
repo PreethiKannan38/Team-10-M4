@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { CanvasEngineController } from '../Engine/CanvasEngineController';
 
-export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, activeLayer, fillEnabled, gridOpacity }) {
+export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, activeLayer, fillEnabled, gridOpacity, canvasId }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
   useEffect(() => {
-    if (!canvasRef.current || !containerRef.current) return;
+    if (!canvasRef.current || !containerRef.current || !canvasId) return;
 
     const resizeCanvas = () => {
       const { width, height } = containerRef.current.getBoundingClientRect();
@@ -17,7 +17,7 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
       }
     };
 
-    const engine = new CanvasEngineController(canvasRef.current, containerRef.current);
+    const engine = new CanvasEngineController(canvasRef.current, containerRef.current, canvasId);
     if (canvasEngineRef) canvasEngineRef.current = engine;
 
     const handleWheel = (e) => {
@@ -45,7 +45,7 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
       window.removeEventListener('resize', resizeCanvas);
       engine.destroy();
     };
-  }, []);
+  }, [canvasId]);
 
   useEffect(() => {
     if (canvasEngineRef?.current && (brushColor || brushSize || brushOpacity !== undefined)) {

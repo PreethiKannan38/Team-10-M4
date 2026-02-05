@@ -16,14 +16,14 @@ import { BoundsCalculation } from './utils/BoundsCalculation';
 import ToolManager from './ToolManager';
 
 export class CanvasEngineController {
-  constructor(canvas, container) {
+  constructor(canvas, container, roomId = 'drawing-room') {
     this.canvas = canvas;
     this.container = container;
     this.ctx = canvas.getContext('2d');
 
     // === YJS INITIALIZATION ===
     this.doc = new Y.Doc();
-    this.provider = new WebsocketProvider('ws://localhost:5000', 'drawing-room', this.doc);
+    this.provider = new WebsocketProvider('ws://localhost:5000', roomId, this.doc);
 
     this.provider.on('status', event => {
       console.log('Yjs WebSocket Status:', event.status);
@@ -70,12 +70,23 @@ export class CanvasEngineController {
     // Wait for sync before initializing
     this.provider.on('sync', (isSynced) => {
       if (isSynced) {
-        console.log('Yjs Synced');
-        if (this.yLayers.length === 0) {
-          this.createDefaultLayer();
-        } else {
-          this.syncFromYjs();
-        }
+        console.log('[Yjs] Provider Synced');
+
+        // Wait a bit for the full state to arrive and be processed
+        setTimeout(() => {
+          const layerCount = this.yLayers.length;
+          const objectCount = this.yObjects.size;
+
+          console.log(`[Yjs] Initial Sync State: ${layerCount} layers, ${objectCount} objects`);
+
+          if (layerCount === 0) {
+            console.log('[Yjs] No existing layers found, creating default layer');
+            this.createDefaultLayer();
+          } else {
+            console.log('[Yjs] Existing state found, syncing to engine');
+            this.syncFromYjs();
+          }
+        }, 800);
       }
     });
 
@@ -87,9 +98,6 @@ export class CanvasEngineController {
     this.feedbackActive = false;
   }
 
-  /**
-   * Show on-canvas feedback for brush size/opacity changes
-   */
   showFeedback() {
     this.feedbackActive = true;
     if (this.feedbackTimeout) clearTimeout(this.feedbackTimeout);
@@ -108,28 +116,77 @@ export class CanvasEngineController {
   }
 
   syncFromYjs() {
-    const objects = this.yObjects.toJSON();
-    this.sceneManager.objects = objects;
+    try {
+      let layers = this.yLayers.toArray();
+      const objects = this.yObjects.toJSON();
 
-    const layers = this.yLayers.toJSON();
-    this.layerManager.layers = layers;
-
-    const order = [];
-    layers.forEach(layer => {
-      if (layer.objects) order.push(...layer.objects);
-    });
-    this.sceneManager.objectOrder = order;
-
-    if (layers.length > 0) {
-      if (!this.state.activeLayerId || !layers.find(l => l.id === this.state.activeLayerId)) {
-        this.state.activeLayerId = layers[0].id;
+      // SELF-HEALING: If we have objects but 0 layers, we are in a broken state.
+      // Force create a default layer to "rescue" the objects.
+      if (layers.length === 0 && Object.keys(objects).length > 0) {
+        console.warn('[Engine] Healing: Objects exist but 0 layers. Creating rescue layer.');
+        this.createDefaultLayer();
+        layers = this.yLayers.toArray();
       }
+
+      this.sceneManager.objects = objects;
+      this.layerManager.layers = layers;
+
+      const order = [];
+      let orphanedCount = 0;
+
+      layers.forEach(layer => {
+        if (layer && layer.objects) {
+          order.push(...layer.objects);
+        }
+      });
+
+      // Check for orphans (objects not in any layer)
+      Object.keys(objects).forEach(id => {
+        if (!order.includes(id)) orphanedCount++;
+      });
+
+      if (orphanedCount > 0 && layers.length > 0) {
+        console.log(`[Engine] Found ${orphanedCount} orphaned objects. Re-linking...`);
+        this.rescueOrphans(layers[0].id);
+        return; // The rescue will trigger another sync
+      }
+
+      this.sceneManager.objectOrder = order;
+
+      if (layers.length > 0) {
+        if (!this.state.activeLayerId || !layers.find(l => l.id === this.state.activeLayerId)) {
+          this.state.activeLayerId = layers[0].id;
+        }
+      }
+      this.render();
+    } catch (e) {
+      console.error('Sync Error:', e);
     }
-    this.render();
+  }
+
+  rescueOrphans(layerId) {
+    this.doc.transact(() => {
+      const layers = this.yLayers.toArray();
+      const idx = layers.findIndex(l => l.id === layerId);
+      if (idx === -1) return;
+
+      const layer = this.yLayers.get(idx);
+      const objects = this.yObjects.toJSON();
+      const allPlacedIds = [];
+      layers.forEach(l => allPlacedIds.push(...l.objects));
+
+      const orphans = Object.keys(objects).filter(id => !allPlacedIds.includes(id));
+      if (orphans.length > 0) {
+        const updatedLayer = { ...layer, objects: [...layer.objects, ...orphans] };
+        this.yLayers.delete(idx);
+        this.yLayers.insert(idx, [updatedLayer]);
+        console.log(`[Engine] Successfully rescued ${orphans.length} objects into ${layerId}`);
+      }
+    });
   }
 
   createDefaultLayer() {
-    const layerId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+    const layerId = 'default-layer'; // Standardized ID
     const defaultLayer = {
       id: layerId,
       name: 'Background',
@@ -141,10 +198,14 @@ export class CanvasEngineController {
     };
 
     this.doc.transact(() => {
-      this.yLayers.push([defaultLayer]);
+      // Check if it already exists before pushing
+      const exists = this.yLayers.toArray().some(l => l.id === layerId);
+      if (!exists && this.yLayers.length === 0) {
+        this.yLayers.push([defaultLayer]);
+        this.state.activeLayerId = layerId;
+      }
     });
 
-    this.state.activeLayerId = layerId;
     this.syncFromYjs();
   }
 
@@ -171,45 +232,58 @@ export class CanvasEngineController {
 
   addObject(object) {
     const id = object.id || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2));
-    const layerId = object.layerId || this.state.activeLayerId;
 
-    // Calculate bounds before saving for selection support
-    const bounds = this._calculateBounds(object.type, object.geometry, object.style);
-
-    const obj = {
-      ...object,
-      id,
-      layerId,
-      visible: object.visible !== undefined ? object.visible : true,
-      locked: object.locked !== undefined ? object.locked : false,
-      style: {
-        color: object.style?.color || '#217BF4',
-        width: object.style?.width || 5,
-        opacity: object.style?.opacity || 1.0,
-        fillColor: object.style?.fillColor || 'transparent',
-        ...object.style,
-      },
-      bounds,
-      metadata: object.metadata || {},
-    };
-
+    // We'll determine the layer inside the transaction to ensure atomicity
     this.doc.transact(() => {
+      let layers = this.yLayers.toArray();
+
+      // 1. Ensure at least one layer exists
+      if (layers.length === 0) {
+        console.log('[Engine] No layers found during addObject. Creating default...');
+        this.createDefaultLayer();
+        layers = this.yLayers.toArray();
+      }
+
+      // 2. Determine layer
+      let layerId = object.layerId || this.state.activeLayerId;
+      let layerIndex = layers.findIndex(l => l.id === layerId);
+
+      if (layerIndex === -1) {
+        console.warn(`[Engine] Target layer ${layerId} missing. Falling back.`);
+        layerId = layers[0].id;
+        layerIndex = 0;
+      }
+
+      // 3. Create the object
+      const bounds = this._calculateBounds(object.type, object.geometry, object.style);
+      const obj = {
+        ...object,
+        id,
+        layerId,
+        visible: true,
+        style: {
+          color: object.style?.color || '#217BF4',
+          width: object.style?.width || 5,
+          opacity: object.style?.opacity || 1.0,
+          fillColor: object.style?.fillColor || 'transparent',
+        },
+        bounds,
+      };
+
+      // 4. Update shared state
       this.yObjects.set(id, obj);
-      const layers = this.yLayers.toArray();
-      const layerIndex = layers.findIndex(l => l.id === layerId);
-      if (layerIndex !== -1) {
-        const layer = this.yLayers.get(layerIndex);
-        if (!layer.objects.includes(id)) {
-          const updatedLayer = { ...layer, objects: [...layer.objects, id] };
-          this.yLayers.delete(layerIndex);
-          this.yLayers.insert(layerIndex, [updatedLayer]);
-        }
+
+      const layer = this.yLayers.get(layerIndex);
+      if (!layer.objects.includes(id)) {
+        const updatedLayer = { ...layer, objects: [...layer.objects, id] };
+        this.yLayers.delete(layerIndex);
+        this.yLayers.insert(layerIndex, [updatedLayer]);
+        console.log(`[Engine] Object ${id} confirmed on layer ${layerId}`);
       }
     });
 
-    // Immediate local sync to ensure objects are instantly selectable
     this.syncFromYjs();
-    return obj;
+    return this.yObjects.get(id);
   }
 
   exportToImage() {
@@ -348,10 +422,10 @@ export class CanvasEngineController {
     if (this.state.isPanning) {
       const dx = event.clientX - this.state.lastMousePos.x;
       const dy = event.clientY - this.state.lastMousePos.y;
-      
+
       this.state.pan.x += dx;
       this.state.pan.y += dy;
-      
+
       this.state.lastMousePos = { x: event.clientX, y: event.clientY };
       this.render();
       return;
@@ -384,7 +458,7 @@ export class CanvasEngineController {
 
   render() {
     if (!this.ctx) return;
-    
+
     // Figma-inspired soft neutral background
     this.ctx.fillStyle = '#FAFAFC';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -418,7 +492,7 @@ export class CanvasEngineController {
 
   renderGrid() {
     const gridSize = 50;
-    
+
     // Base opacity from user setting (0-1)
     const baseOpacity = this.state.gridOpacity;
     if (baseOpacity <= 0) return;
@@ -426,7 +500,7 @@ export class CanvasEngineController {
     // Fade out smoothly while zooming in, more visible when zooming out
     const zoomFactor = Math.min(1, 1 / this.state.zoom);
     const finalOpacity = baseOpacity * 0.8 * zoomFactor; // Increased multiplier significantly
-    
+
     const startX = Math.floor(-this.state.pan.x / this.state.zoom / gridSize) * gridSize;
     const startY = Math.floor(-this.state.pan.y / this.state.zoom / gridSize) * gridSize;
     const endX = startX + (this.canvas.width / this.state.zoom) + gridSize;
@@ -434,14 +508,14 @@ export class CanvasEngineController {
 
     this.ctx.strokeStyle = `rgba(148, 163, 184, ${finalOpacity})`; // Even darker slate gray #94A3B8 for better visibility
     this.ctx.lineWidth = 1 / this.state.zoom;
-    
+
     this.ctx.beginPath();
     // Vertical lines
     for (let x = startX; x < endX; x += gridSize) {
       this.ctx.moveTo(x, startY);
       this.ctx.lineTo(x, endY);
     }
-    
+
     // Horizontal lines
     for (let y = startY; y < endY; y += gridSize) {
       this.ctx.moveTo(startX, y);
@@ -475,7 +549,7 @@ export class CanvasEngineController {
     if (!geometry) return;
 
     const isSelected = this.state.selectedObjectId === id;
-    
+
     this.ctx.globalAlpha = style?.opacity || 1.0;
     this.ctx.strokeStyle = isSelected ? '#2563EB' : (style?.color || '#000000');
     this.ctx.lineWidth = isSelected ? (style?.width || 1) + 2 : (style?.width || 1);
@@ -566,7 +640,7 @@ export class CanvasEngineController {
     this.canvas.addEventListener('pointermove', e => this.onPointerMove(e));
     this.canvas.addEventListener('pointerup', e => this.onPointerUp(e));
     this.canvas.addEventListener('pointerleave', e => this.onPointerUp(e));
-    
+
     // Double click to reset view or toggle pan (optional, but let's add move tool toggle)
     this.canvas.addEventListener('dblclick', () => {
       this.setTool('move');
