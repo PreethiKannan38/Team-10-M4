@@ -268,6 +268,8 @@ export class CanvasEngineController {
           width: object.style?.width || 5,
           opacity: object.style?.opacity || 1.0,
           fillColor: object.style?.fillColor || 'transparent',
+          fontFamily: object.style?.fontFamily || 'Inter, sans-serif',
+          fontSize: object.style?.fontSize || 24,
         },
         bounds,
       };
@@ -342,6 +344,7 @@ export class CanvasEngineController {
       case 'circle': return BoundsCalculation.circleBounds(geometry.cx, geometry.cy, geometry.radius, sw);
       case 'triangle': return BoundsCalculation.strokeBounds(geometry.points, sw);
       case 'polygon': return BoundsCalculation.strokeBounds(geometry.points, sw);
+      case 'text': return { x: geometry.x, y: geometry.y, width: geometry.width || 200, height: geometry.height || 100 };
       default: return null;
     }
   }
@@ -412,45 +415,46 @@ export class CanvasEngineController {
   // --- EVENTS ---
 
   onPointerDown(event) {
-    // Handle Middle Mouse or Spacebar+LeftClick for panning
     if (event.button === 1 || this.spacePressed) {
       this.state.isPanning = true;
       this.state.lastMousePos = { x: event.clientX, y: event.clientY };
       return;
     }
 
-    if (!this.currentTool) return;
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     this.state.isDrawing = true;
-    this.currentTool.onPointerDown({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    if (this.currentTool) {
+        this.currentTool.onPointerDown({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    }
   }
 
   onPointerMove(event) {
+    const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
+    this.pointerX = coords.x;
+    this.pointerY = coords.y;
+
     if (this.state.isPanning) {
       const dx = event.clientX - this.state.lastMousePos.x;
       const dy = event.clientY - this.state.lastMousePos.y;
-
       this.state.pan.x += dx;
       this.state.pan.y += dy;
-
       this.state.lastMousePos = { x: event.clientX, y: event.clientY };
       this.render();
       return;
     }
 
-    if (!this.currentTool) return;
-    const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
-    this.pointerX = coords.x;
-    this.pointerY = coords.y;
-    this.currentTool.onPointerMove({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    if (this.currentTool) {
+        this.currentTool.onPointerMove({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    }
   }
 
   onPointerUp(event) {
     this.state.isPanning = false;
-    if (!this.currentTool) return;
-    const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     this.state.isDrawing = false;
-    this.currentTool.onPointerUp({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
+    if (this.currentTool) {
+        this.currentTool.onPointerUp({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    }
   }
 
   screenToCanvasCoords(screenX, screenY) {
@@ -564,9 +568,18 @@ export class CanvasEngineController {
       this._finalizeShape(style);
     } else if (type === 'text') {
       this.ctx.fillStyle = style?.color || '#000000';
-      this.ctx.font = `${style.fontSize || 16}px ${style.fontFamily || 'Arial'}`;
-      this.ctx.textBaseline = 'hanging';
-      this.ctx.fillText(geometry.text, geometry.x, geometry.y);
+      const fontSize = style?.fontSize || 24;
+      const fontFamily = style?.fontFamily || 'Inter, sans-serif';
+      this.ctx.font = `${fontSize}px ${fontFamily}`;
+      this.ctx.textBaseline = 'top';
+      
+      this._renderWrappedText(
+        geometry.text, 
+        geometry.x, 
+        geometry.y, 
+        geometry.width || 200, 
+        fontSize * 1.2
+      );
     }
 
     // Draw a bounding box for selected items for extra clarity
@@ -580,6 +593,27 @@ export class CanvasEngineController {
     }
 
     this.ctx.globalAlpha = 1.0;
+  }
+
+  _renderWrappedText(text, x, y, maxWidth, lineHeight) {
+    if (!text) return;
+    const words = text.split(' ');
+    let line = '';
+    let testY = y;
+    const safeMaxWidth = Math.max(maxWidth, 20); // Prevent zero-width crashes
+
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + ' ';
+      const metrics = this.ctx.measureText(testLine);
+      if (metrics.width > safeMaxWidth && n > 0) {
+        this.ctx.fillText(line, x, testY);
+        line = words[n] + ' ';
+        testY += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    this.ctx.fillText(line, x, testY);
   }
 
   _finalizeShape(style) {
@@ -625,8 +659,19 @@ export class CanvasEngineController {
     this.canvas.addEventListener('pointerup', e => this.onPointerUp(e));
     this.canvas.addEventListener('pointerleave', e => this.onPointerUp(e));
 
-    // Double click to reset view or toggle pan (optional, but let's add move tool toggle)
-    this.canvas.addEventListener('dblclick', () => {
+    this.canvas.addEventListener('dblclick', (e) => {
+      const coords = this.screenToCanvasCoords(e.clientX, e.clientY);
+      const objects = this.sceneManager.getObjectsAtPoint(coords.x, coords.y);
+      if (objects.length > 0) {
+        const target = objects[objects.length - 1];
+        if (target.type === 'text') {
+          this.setTool('text');
+          if (this.currentTool && this.currentTool.startEditingExisting) {
+            this.currentTool.startEditingExisting(target, e.clientX, e.clientY, this);
+          }
+          return;
+        }
+      }
       this.setTool('move');
     });
   }

@@ -130,6 +130,7 @@ const Profile = () => {
                                         value={newName}
                                         onChange={(e) => setNewName(e.target.value)}
                                         className="w-full text-center bg-slate-50 border-2 border-indigo-100 rounded-xl py-2 px-4 font-bold outline-none focus:border-indigo-500 transition-all"
+                                        placeholder="Enter Your Name"
                                         autoFocus
                                     />
                                     <div className="flex gap-2">
@@ -137,13 +138,13 @@ const Profile = () => {
                                             onClick={handleUpdateName}
                                             className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"
                                         >
-                                            <Save size={14} /> Save
+                                            <Save size={14} /> Save Name
                                         </button>
                                         <button 
                                             onClick={() => { setIsEditingName(false); setNewName(user.name); }}
                                             className="flex-1 bg-slate-100 text-slate-400 py-2 rounded-xl text-xs font-black uppercase tracking-widest"
                                         >
-                                            Cancel
+                                            Cancel Edit
                                         </button>
                                     </div>
                                 </div>
@@ -210,7 +211,7 @@ const Profile = () => {
                                         value={passwords.current}
                                         onChange={handleChange}
                                         className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                                        placeholder="••••••••"
+                                        placeholder="Enter Current Password"
                                     />
                                 </div>
 
@@ -225,7 +226,7 @@ const Profile = () => {
                                             value={passwords.new}
                                             onChange={handleChange}
                                             className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                                            placeholder="••••••••"
+                                            placeholder="Enter New Password"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -237,7 +238,7 @@ const Profile = () => {
                                             value={passwords.confirm}
                                             onChange={handleChange}
                                             className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                                            placeholder="••••••••"
+                                            placeholder="Confirm New Password"
                                         />
                                     </div>
                                 </div>
