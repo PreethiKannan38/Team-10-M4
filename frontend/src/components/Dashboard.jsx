@@ -142,7 +142,7 @@ const Dashboard = () => {
                     </button>
                     <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl font-bold transition-all">
                         <Users size={20} />
-                        <span className="hidden lg:block">Shared with me</span>
+                        <span className="hidden lg:block">Shared With Me</span>
                     </button>
                     <div className="pt-4 pb-2 px-4">
                         <p className="hidden lg:block text-[10px] font-black text-slate-300 uppercase tracking-widest">Recent Activity</p>
@@ -175,7 +175,7 @@ const Dashboard = () => {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={18} />
                             <input 
                                 type="text" 
-                                placeholder="Search workspaces..." 
+                                placeholder="Search Workspaces..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-slate-100 border-none rounded-2xl py-2.5 pl-12 pr-4 text-sm font-bold placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all"
@@ -191,7 +191,7 @@ const Dashboard = () => {
                                 title="Toggle Sort"
                             >
                                 <Filter size={16} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">{sortBy === 'name' ? 'Name' : 'Date'}</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">{sortBy === 'name' ? 'Name' : 'Date Updated'}</span>
                             </button>
                             <button 
                                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
