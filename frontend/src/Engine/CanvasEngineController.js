@@ -557,6 +557,7 @@ export class CanvasEngineController {
       this._renderPolygon(geometry.points);
       this._finalizeShape(style);
     } else if (type === 'text') {
+      this.ctx.fillStyle = style?.color || '#000000';
       this.ctx.font = `${style.fontSize || 16}px ${style.fontFamily || 'Arial'}`;
       this.ctx.fillText(geometry.text, geometry.x, geometry.y);
     }

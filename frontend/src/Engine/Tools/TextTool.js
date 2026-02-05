@@ -16,6 +16,9 @@ export class TextTool extends BaseTool {
   }
 
   onPointerDown(event, engine) {
+    // Only handle left clicks
+    if (event.button !== 0) return;
+
     if (!event.canvasX || !event.canvasY) return;
 
     // Finalize any existing edit
@@ -36,34 +39,41 @@ export class TextTool extends BaseTool {
     this.overlay = input;
 
     const brush = engine.state.brushOptions;
+    const fontSize = Math.max(12, brush.width * 4);
     
-    // Style the overlay to match current properties
+    // Style the overlay to be extremely obvious
     Object.assign(input.style, {
       position: 'absolute',
       left: `${screenX}px`,
       top: `${screenY}px`,
-      background: 'rgba(255, 255, 255, 0.9)',
+      background: 'white',
       border: '2px solid #8b5cf6',
       borderRadius: '8px',
       outline: 'none',
-      color: brush.color,
-      fontSize: `${brush.width * 4}px`, // Using brush width as a proxy for font size
+      color: brush.color === 'transparent' ? '#000000' : brush.color,
+      fontSize: `${fontSize}px`,
       fontFamily: brush.fontFamily || 'Inter, sans-serif',
       padding: '12px',
       minWidth: '200px',
-      minHeight: '100px',
-      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-      zIndex: '1000',
+      minHeight: '80px',
+      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+      zIndex: '2000',
       resize: 'both',
       overflow: 'hidden',
       whiteSpace: 'pre-wrap'
     });
 
+    input.placeholder = "Type here...";
     document.body.appendChild(input);
-    input.focus();
+    
+    // Small delay to ensure focus works on all browsers
+    setTimeout(() => input.focus(), 10);
+
+    // Prevent clicks inside the box from triggering the canvas
+    input.addEventListener('pointerdown', (e) => e.stopPropagation());
+    input.addEventListener('mousedown', (e) => e.stopPropagation());
 
     // Finish on Blur or Escape
-    input.onblur = () => this._commitText(engine);
     input.onkeydown = (e) => {
       if (e.key === 'Escape') {
         this._removeOverlay();
@@ -94,8 +104,8 @@ export class TextTool extends BaseTool {
           text: text
         },
         style: {
-          color: brush.color,
-          fontSize: brush.width * 4,
+          color: brush.color === 'transparent' ? '#000000' : brush.color,
+          fontSize: Math.max(12, brush.width * 4),
           fontFamily: brush.fontFamily || 'Inter, sans-serif',
           opacity: brush.opacity
         }
