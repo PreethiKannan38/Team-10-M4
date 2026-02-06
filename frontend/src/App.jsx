@@ -9,16 +9,20 @@ import Login from './components/Login';
 import Register from './components/Register';
 import LandingPage from './components/LandingPage';
 import Profile from './components/Profile';
+import ShareModal from './components/ShareModal';
 
 import axios from 'axios';
 
 // Simple Auth Guard
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
+  const user = localStorage.getItem('user');
   const isGuest = localStorage.getItem('isGuest') === 'true';
   
-  // If neither, go to login
+  // Allow if token exists OR if guest mode is active
   if (!token && !isGuest) {
+    // Double check if user data exists as fallback
+    if (user) return children;
     return <Navigate to="/login" replace />;
   }
   return children;
@@ -47,10 +51,41 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [gridOpacity, setGridOpacity] = useState(30);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [fillEnabled, setFillOn] = useState(false);
   const [canvasMetadata, setCanvasMetadata] = useState(null);
 
   const [activeLayer, setActiveLayer] = useState('default-layer');
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isGuest = localStorage.getItem('isGuest') === 'true';
+  
+  // Calculate role - Default to editor for immediate access
+  let userRole = 'editor'; 
+  
+  if (isGuest) {
+    userRole = 'editor';
+  } else if (canvasMetadata) {
+    const ownerId = canvasMetadata.owner?._id || canvasMetadata.owner;
+    const currentUserId = user._id;
+    
+    // Robust string comparison
+    const isOwner = ownerId && currentUserId && ownerId.toString() === currentUserId.toString();
+    
+    if (isOwner) {
+      userRole = 'editor';
+    } else {
+      const memberEntry = canvasMetadata.members?.find(m => {
+        const mId = m.user?._id || m.user;
+        return mId?.toString() === currentUserId?.toString();
+      });
+      userRole = memberEntry?.role || 'viewer';
+    }
+  } else if (localStorage.getItem('token')) {
+    // If we have a token but metadata isn't here yet, default to editor 
+    // so owners don't get blocked during initial load
+    userRole = 'editor';
+  }
 
   useEffect(() => {
     fetchCanvasMetadata();
@@ -146,8 +181,17 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onClear={clearCanvas}
           onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout} // Used the extracted onLogout
+          onShare={() => setIsShareModalOpen(true)}
+          userRole={userRole}
+          ownerName={canvasMetadata?.owner?.name}
         />
       </div>
+
+      <ShareModal 
+        isOpen={isShareModalOpen} 
+        onClose={() => setIsShareModalOpen(false)} 
+        canvasId={canvasId}
+      />
 
       <div className="flex-1 flex overflow-hidden relative">
         <button

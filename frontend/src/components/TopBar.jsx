@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-export default function TopBar({ onClear, onDashboard, onLogout, canvasName, onNameChange }) {
+export default function TopBar({ onClear, onDashboard, onLogout, canvasName, onNameChange, onShare, userRole, ownerName }) {
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(canvasName || 'Untitled Canvas');
   const navigate = useNavigate();
@@ -38,54 +38,65 @@ export default function TopBar({ onClear, onDashboard, onLogout, canvasName, onN
 
         <div className="w-[1px] h-6 bg-slate-200" />
 
-        <div className="flex items-center gap-2 group">
-          {isEditing ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
-                className="bg-slate-50 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-              <button
-                onClick={handleNameSubmit}
-                className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100"
+        <div className="flex flex-col">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">
+            {ownerName ? `Owner: ${ownerName}` : 'Private Workspace'}
+          </span>
+          <div className="flex items-center gap-2 group">
+            {isEditing && userRole === 'editor' ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
+                  className="bg-slate-50 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+                <button
+                  onClick={handleNameSubmit}
+                  className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100"
+                >
+                  <Check size={14} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className={`flex items-center gap-2 ${userRole === 'editor' ? 'cursor-pointer' : ''}`}
+                onClick={() => userRole === 'editor' && setIsEditing(true)}
               >
-                <Check size={14} />
-              </button>
-            </div>
-          ) : (
-            <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => setIsEditing(true)}
-            >
-              <h1 className="text-sm font-bold text-slate-800 tracking-tight">{canvasName || 'Untitled Canvas'}</h1>
-              <Edit2 size={12} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
-            </div>
-          )}
+                <h1 className="text-sm font-bold text-slate-800 tracking-tight">{canvasName || 'Untitled Canvas'}</h1>
+                {userRole === 'editor' && <Edit2 size={12} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Right: Actions & Profile */}
       <div className="flex items-center gap-3">
         <div className="hidden lg:flex items-center gap-2">
-          <button
-            onClick={onClear}
-            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
-          >
-            Clear Canvas
-          </button>
+          {userRole === 'editor' && (
+            <button
+              onClick={onClear}
+              className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+            >
+              Clear Canvas
+            </button>
+          )}
 
           <button className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
             <Bell className="w-4 h-4" />
           </button>
 
-          <button className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg shadow-indigo-100 transition-all active:scale-95">
-            <Share2 className="w-3.5 h-3.5" />
-            <span>Share Room</span>
-          </button>
+          {userRole === 'editor' && (
+            <button 
+              onClick={onShare}
+              className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg shadow-indigo-100 transition-all active:scale-95"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Share Room</span>
+            </button>
+          )}
 
           <button className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 ml-1">
             <Download className="w-4 h-4" />
@@ -97,7 +108,9 @@ export default function TopBar({ onClear, onDashboard, onLogout, canvasName, onN
         {/* User Profile */}
         <div className="flex items-center gap-3 pl-2">
           <div className="text-right hidden sm:block">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Editor Role</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">
+              {userRole === 'editor' ? 'Editor Role' : 'Viewer Role'}
+            </p>
             <p className="text-xs font-bold text-slate-700 leading-none">{user.name || 'Guest User'}</p>
           </div>
           <div 

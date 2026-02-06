@@ -53,6 +53,7 @@ export class CanvasEngineController {
       fillEnabled: false,
       eraserStrength: 100, // Default to 100% (Full delete)
       gridOpacity: 0.15,
+      userRole: 'editor', // Default to editor to prevent lockout
     };
 
     // === MANAGER INITIALIZATION ===
@@ -233,6 +234,10 @@ export class CanvasEngineController {
   }
 
   addObject(object) {
+    if (this.state.userRole === 'viewer') {
+        console.warn('[Engine] Blocked: Viewers cannot add objects.');
+        return null;
+    }
     const id = object.id || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2));
 
     // We'll determine the layer inside the transaction to ensure atomicity
@@ -298,6 +303,10 @@ export class CanvasEngineController {
   }
 
   removeObject(objectId) {
+    if (this.state.userRole === 'viewer') {
+        console.warn('[Engine] Blocked: Viewers cannot remove objects.');
+        return;
+    }
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
 
@@ -315,6 +324,10 @@ export class CanvasEngineController {
   }
 
   updateObject(objectId, updates) {
+    if (this.state.userRole === 'viewer') {
+        console.warn('[Engine] Blocked: Viewers cannot update objects.');
+        return;
+    }
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
 
@@ -387,6 +400,11 @@ export class CanvasEngineController {
     this.render();
   }
 
+  setUserRole(role) {
+    this.state.userRole = role;
+    this.dispatchStateChange('userRole', role);
+  }
+
   /**
    * Set zoom level centered on a specific point
    */
@@ -415,6 +433,8 @@ export class CanvasEngineController {
   // --- EVENTS ---
 
   onPointerDown(event) {
+    if (this.state.userRole === 'viewer') return;
+    
     if (event.button === 1 || this.spacePressed) {
       this.state.isPanning = true;
       this.state.lastMousePos = { x: event.clientX, y: event.clientY };
@@ -443,6 +463,8 @@ export class CanvasEngineController {
       return;
     }
 
+    if (this.state.userRole === 'viewer') return;
+
     if (this.currentTool) {
         this.currentTool.onPointerMove({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
     }
@@ -451,6 +473,8 @@ export class CanvasEngineController {
   onPointerUp(event) {
     this.state.isPanning = false;
     this.state.isDrawing = false;
+    if (this.state.userRole === 'viewer') return;
+    
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     if (this.currentTool) {
         this.currentTool.onPointerUp({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
@@ -647,6 +671,10 @@ export class CanvasEngineController {
   // --- UTILS ---
 
   executeCommand(command) {
+    if (this.state.userRole === 'viewer') {
+        console.warn('[Engine] Action blocked: Viewers cannot modify the canvas.');
+        return;
+    }
     this.historyManager.executeCommand(command);
   }
 
@@ -692,8 +720,18 @@ export class CanvasEngineController {
         this.dispatchStateChange('selection', null);
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y') && e.shiftKey) { e.preventDefault(); this.redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { 
+        if (this.state.userRole !== 'viewer') {
+            e.preventDefault(); 
+            this.undo(); 
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y') && e.shiftKey) { 
+        if (this.state.userRole !== 'viewer') {
+            e.preventDefault(); 
+            this.redo(); 
+        }
+      }
     });
 
     window.addEventListener('keyup', e => {
