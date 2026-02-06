@@ -16,7 +16,7 @@ import axios from 'axios';
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   const isGuest = localStorage.getItem('isGuest') === 'true';
-  
+
   // If neither, go to login
   if (!token && !isGuest) {
     return <Navigate to="/login" replace />;
@@ -28,7 +28,7 @@ const ProtectedRoute = ({ children }) => {
 const PublicRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   const isGuest = localStorage.getItem('isGuest') === 'true';
-  
+
   if (token || isGuest) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -141,11 +141,17 @@ function CanvasWorkspace({ canvasEngineRef }) {
 
       <div className="h-20 shrink-0 relative z-50">
         <TopBar
-          canvasName={canvasMetadata?.name} // Passed canvasName
-          onNameChange={handleNameChange} // Passed onNameChange
+          canvas={{
+            canvasId,
+            owner: canvasMetadata?.owner,
+            members: canvasMetadata?.members,
+            refetch: fetchCanvasMetadata
+          }}
+          canvasName={canvasMetadata?.name}
+          onNameChange={handleNameChange}
           onClear={clearCanvas}
           onDashboard={() => navigate('/dashboard')}
-          onLogout={onLogout} // Used the extracted onLogout
+          onLogout={onLogout}
         />
       </div>
 
