@@ -3,7 +3,7 @@ import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User } 
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 
-export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange }) {
+export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange, userRole }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const shareRef = useRef(null);
@@ -81,11 +81,11 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
             </div>
           ) : (
             <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => setIsEditing(true)}
+              className={`flex items-center gap-2 ${userRole !== 'viewer' ? 'cursor-pointer' : 'cursor-default'}`}
+              onClick={() => userRole !== 'viewer' && setIsEditing(true)}
             >
               <h1 className="text-sm font-bold text-slate-800 tracking-tight">{canvasName || 'Untitled Canvas'}</h1>
-              <Edit2 size={12} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
+              {userRole !== 'viewer' && <Edit2 size={12} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />}
             </div>
           )}
         </div>
@@ -134,7 +134,9 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
         {/* User Profile */}
         <div className="flex items-center gap-3 pl-2">
           <div className="text-right hidden sm:block">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Editor Role</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">
+              {userRole === 'owner' ? 'Owner' : userRole === 'editor' ? 'Editor' : 'Viewer'}
+            </p>
             <p className="text-xs font-bold text-slate-700 leading-none">{user.name || 'Guest User'}</p>
           </div>
           <div

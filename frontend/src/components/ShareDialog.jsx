@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { X, UserPlus, Mail, User, Trash2, Loader2, ShieldCheck, Crown, Share2, Copy, Check } from 'lucide-react';
+import axios from 'axios';
 
 const ShareDialog = ({ isOpen, onClose, canvasId, owner, members, onUpdate }) => {
     const [identifier, setIdentifier] = useState('');
+    const [role, setRole] = useState('editor');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [copied, setCopied] = useState(false);
 
-    // Mock Context for UI-only state
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{"name": "Preethi Kannan"}');
-    const isOwner = true; // Hardcoded for demo
+    const token = localStorage.getItem('token');
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const isOwner = owner?._id === currentUser._id || owner === currentUser._id;
 
     const shareUrl = window.location.href;
 
@@ -20,24 +22,42 @@ const ShareDialog = ({ isOpen, onClose, canvasId, owner, members, onUpdate }) =>
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handleAddMember = (e) => {
+    const handleAddMember = async (e) => {
         if (e) e.preventDefault();
         setError('');
         setSuccess('');
         setLoading(true);
 
-        // Simulation for 100% UI mode
-        setTimeout(() => {
+        try {
+            await axios.post(`http://localhost:5001/api/canvas/${canvasId}/invite`,
+                { email: identifier, role },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
             setSuccess(`Invite sent to ${identifier}!`);
             setIdentifier('');
+            if (onUpdate) onUpdate();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to add member');
+        } finally {
             setLoading(false);
-        }, 800);
+        }
     };
 
-    const handleRemoveMember = (userId) => {
-        if (!window.confirm('Remove this collaborator? (UI Demo)')) return;
-        setSuccess('Collaborator removed (Visual only)');
-        setTimeout(() => setSuccess(''), 3000);
+    const handleRemoveMember = async (userId) => {
+        if (!window.confirm('Remove this collaborator?')) return;
+        setLoading(true);
+        try {
+            await axios.delete(`http://localhost:5001/api/canvas/${canvasId}/members/${userId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSuccess('Collaborator removed');
+            if (onUpdate) onUpdate();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to remove member');
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -85,25 +105,35 @@ const ShareDialog = ({ isOpen, onClose, canvasId, owner, members, onUpdate }) =>
                 {isOwner ? (
                     <form onSubmit={handleAddMember} className="space-y-2.5">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Invite Collaborator</label>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                                <input
-                                    type="text"
-                                    value={identifier}
-                                    onChange={(e) => setIdentifier(e.target.value)}
-                                    placeholder="Email or username"
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 pl-10 pr-4 text-xs font-bold text-slate-700 placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                    required
-                                />
+                        <div className="flex flex-col gap-2">
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                                    <input
+                                        type="email"
+                                        value={identifier}
+                                        onChange={(e) => setIdentifier(e.target.value)}
+                                        placeholder="User Email"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 pl-10 pr-4 text-xs font-bold text-slate-700 placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        required
+                                    />
+                                </div>
+                                <select
+                                    value={role}
+                                    onChange={(e) => setRole(e.target.value)}
+                                    className="bg-slate-50 border border-slate-100 rounded-xl px-3 text-[10px] font-black uppercase tracking-widest text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                                >
+                                    <option value="editor">Editor</option>
+                                    <option value="viewer">Viewer</option>
+                                </select>
                             </div>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 py-2.5 font-black text-[9px] uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2.5 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {loading ? <Loader2 className="animate-spin" size={14} /> : <UserPlus size={14} />}
-                                Invite
+                                Send Invite
                             </button>
                         </div>
                     </form>
@@ -134,24 +164,21 @@ const ShareDialog = ({ isOpen, onClose, canvasId, owner, members, onUpdate }) =>
                             </div>
                         </div>
 
-                        {/* Members - Mock for UI demo */}
-                        {(members && members.length > 0 ? members : [
-                            { _id: '1', name: 'Alex Rivera' },
-                            { _id: '2', name: 'Sarah Chen' }
-                        ]).map(member => (
-                            <div key={member._id} className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-slate-200 transition-all">
+                        {/* Members */}
+                        {members?.map(member => (
+                            <div key={member.user._id || member.user} className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-slate-200 transition-all">
                                 <div className="flex items-center gap-3">
                                     <div className="w-9 h-9 bg-white rounded-lg shadow-sm flex items-center justify-center text-slate-400">
                                         <User size={16} />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-black text-slate-800 tracking-tight">{member.name}</p>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Editor</p>
+                                        <p className="text-xs font-black text-slate-800 tracking-tight">{member.user.name || 'Member'}</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{member.role || 'Editor'}</p>
                                     </div>
                                 </div>
                                 {isOwner && (
                                     <button
-                                        onClick={() => handleRemoveMember(member._id)}
+                                        onClick={() => handleRemoveMember(member.user._id || member.user)}
                                         className="w-9 h-9 rounded-lg text-slate-300 hover:text-red-500 hover:bg-white hover:shadow-sm transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center"
                                     >
                                         <Trash2 size={14} />

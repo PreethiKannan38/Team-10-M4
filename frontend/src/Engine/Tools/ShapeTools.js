@@ -48,7 +48,7 @@ export class RectangleTool extends BaseTool {
   onPointerUp(ev, engine) {
     if (!this.start || !this.end) return;
     engine.executeCommand(new AddObjectCommand(engine, {
-      type: 'rectangle', 
+      type: 'rectangle',
       geometry: { x: Math.min(this.start.x, this.end.x), y: Math.min(this.start.y, this.end.y), width: Math.abs(this.end.x - this.start.x), height: Math.abs(this.end.y - this.start.y) },
       style: { ...engine.state.brushOptions, fillColor: engine.state.fillEnabled ? engine.state.brushOptions.color : 'transparent' }
     }));
@@ -67,7 +67,7 @@ export class CircleTool extends BaseTool {
   onPointerMove(ev) { if (this.start) this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerUp(ev, engine) {
     if (!this.start || !this.end) return;
-    const radius = Math.sqrt((this.end.x - this.start.x)**2 + (this.end.y - this.start.y)**2);
+    const radius = Math.sqrt((this.end.x - this.start.x) ** 2 + (this.end.y - this.start.y) ** 2);
     engine.executeCommand(new AddObjectCommand(engine, {
       type: 'circle', geometry: { cx: this.start.x, cy: this.start.y, radius },
       style: { ...engine.state.brushOptions, fillColor: engine.state.fillEnabled ? engine.state.brushOptions.color : 'transparent' }
@@ -76,7 +76,7 @@ export class CircleTool extends BaseTool {
   }
   renderPreview(ctx, engine) {
     if (!this.start || !this.end) return;
-    const radius = Math.sqrt((this.end.x - this.start.x)**2 + (this.end.y - this.start.y)**2);
+    const radius = Math.sqrt((this.end.x - this.start.x) ** 2 + (this.end.y - this.start.y) ** 2);
     ctx.strokeStyle = engine.state.brushOptions.color;
     ctx.beginPath(); ctx.arc(this.start.x, this.start.y, radius, 0, Math.PI * 2); ctx.stroke();
   }
@@ -112,14 +112,14 @@ export class TriangleTool extends BaseTool {
 
 export class PolygonTool extends BaseTool {
   constructor(engine) { super(engine); this.start = null; this.end = null; this.sides = 6; }
-  onPointerDown(ev) { 
-    this.start = { x: ev.canvasX, y: ev.canvasY }; 
-    this.end = { x: ev.canvasX, y: ev.canvasY }; 
+  onPointerDown(ev) {
+    this.start = { x: ev.canvasX, y: ev.canvasY };
+    this.end = { x: ev.canvasX, y: ev.canvasY };
   }
   onPointerMove(ev) { if (this.start) this.end = { x: ev.canvasX, y: ev.canvasY }; }
   onPointerUp(ev, engine) {
     if (!this.start || !this.end) return;
-    const radius = Math.sqrt((this.end.x - this.start.x)**2 + (this.end.y - this.start.y)**2);
+    const radius = Math.sqrt((this.end.x - this.start.x) ** 2 + (this.end.y - this.start.y) ** 2);
     if (radius < 1) { this.start = null; this.end = null; return; }
     const points = [];
     for (let i = 0; i < this.sides; i++) {
@@ -137,7 +137,7 @@ export class PolygonTool extends BaseTool {
   }
   renderPreview(ctx, engine) {
     if (!this.start || !this.end) return;
-    const radius = Math.sqrt((this.end.x - this.start.x)**2 + (this.end.y - this.start.y)**2);
+    const radius = Math.sqrt((this.end.x - this.start.x) ** 2 + (this.end.y - this.start.y) ** 2);
     if (radius < 1) return;
     ctx.strokeStyle = engine.state.brushOptions.color;
     ctx.beginPath();

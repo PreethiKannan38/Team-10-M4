@@ -73,7 +73,7 @@ const toolGroups = [
   }
 ]
 
-export default function Toolbar({ activeTool, onToolChange, onAction }) {
+export default function Toolbar({ activeTool, onToolChange, onAction, userRole }) {
   const [openPopup, setOpenPopup] = useState(null)
   const [hoveredTool, setHoveredTool] = useState(null)
 
@@ -87,14 +87,42 @@ export default function Toolbar({ activeTool, onToolChange, onAction }) {
     else onToolChange(tool.id)
   }
 
+  const getVisibleGroups = () => {
+    if (userRole !== 'viewer') return toolGroups;
+
+    // For viewers, only show Export from History, and maybe nothing else?
+    // Let's create a safe list.
+    return toolGroups.map(group => {
+      if (group.id === 'history') {
+        return {
+          ...group,
+          tools: group.tools.filter(t => t.id === 'export')
+        };
+      }
+      return null;
+    }).filter(Boolean).filter(g => g.tools.length > 0);
+  };
+
+  const visibleGroups = getVisibleGroups();
+
+  if (userRole === 'viewer' && visibleGroups.length === 0) {
+    return (
+      <div className="bg-white/90 backdrop-blur-xl rounded-[3rem] w-16 p-4 py-6 flex flex-col items-center gap-2 border border-slate-200 shadow-2xl relative z-[100]">
+        <div className="text-[10px] font-black uppercase text-slate-400 rotate-180" style={{ writingMode: 'vertical-rl' }}>
+          View Only
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white/90 backdrop-blur-xl rounded-[3rem]
                     w-16 p-3 py-8
-                    flex flex-col items-center gap-2
+                    flex flex-col items-center gap-0
                     border border-slate-200 shadow-2xl
                     relative z-[100]">
 
-      {toolGroups.map((group, i) => {
+      {visibleGroups.map((group, i) => {
         const isOpen = openPopup === group.id
 
         return (
@@ -118,7 +146,7 @@ export default function Toolbar({ activeTool, onToolChange, onAction }) {
                 >
                   <group.groupIcon className="w-6 h-6" />
                 </button>
-                
+
                 {/* Custom Tooltip */}
                 {!isOpen && hoveredTool === group.name && (
                   <div className="absolute left-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg whitespace-nowrap shadow-xl animate-in fade-in zoom-in duration-200 pointer-events-none">
@@ -133,7 +161,7 @@ export default function Toolbar({ activeTool, onToolChange, onAction }) {
               <div
                 className="absolute left-16 top-0
                            bg-white rounded-3xl p-2
-                           flex flex-col gap-2
+                           flex flex-col gap-0
                            shadow-2xl border border-slate-200 z-50 ml-2 animate-in slide-in-from-left-2 duration-300"
               >
                 {group.tools.map((tool) => {
@@ -157,7 +185,7 @@ export default function Toolbar({ activeTool, onToolChange, onAction }) {
                       >
                         <Icon className="w-6 h-6" />
                       </button>
-                      
+
                       {hoveredTool === tool.name && (
                         <div className="absolute left-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg whitespace-nowrap shadow-xl z-[60]">
                           {tool.name}
@@ -171,7 +199,7 @@ export default function Toolbar({ activeTool, onToolChange, onAction }) {
 
             {/* NON-POPUP TOOLS */}
             {!group.popup && (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-0">
                 {group.tools.map((tool) => {
                   const Icon = tool.icon
                   const isActive = activeTool === tool.id
@@ -185,13 +213,13 @@ export default function Toolbar({ activeTool, onToolChange, onAction }) {
                         className={`w-12 h-12 rounded-2xl
                                    flex items-center justify-center
                                    transition-all active:scale-90
-                                   ${isActive 
-                                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
-                                     : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}
+                                   ${isActive
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                            : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}
                       >
                         <Icon className="w-6 h-6" />
                       </button>
-                      
+
                       {hoveredTool === tool.name && (
                         <div className="absolute left-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg whitespace-nowrap shadow-xl pointer-events-none">
                           {tool.name}

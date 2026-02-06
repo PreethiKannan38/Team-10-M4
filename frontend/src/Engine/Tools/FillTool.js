@@ -28,9 +28,9 @@ export class FillTool extends BaseTool {
     if (objectsAtPoint.length > 0) {
       // Fill topmost object
       const target = objectsAtPoint[objectsAtPoint.length - 1];
-      
+
       const fillColor = engine.state.brushOptions.color || '#000000';
-      
+
       // If object is already filled with this color, remove fill. 
       // Or if it's filled and we click it, toggle.
       const shouldRemoveFill = target.style?.fill && (target.style?.fillColor === fillColor || !target.style?.fillColor);
@@ -39,12 +39,12 @@ export class FillTool extends BaseTool {
       const command = new ModifyObjectCommand(
         engine,
         target.id,
-        { 
-          style: { 
-            ...target.style, 
-            fill: !shouldRemoveFill, 
-            fillColor: shouldRemoveFill ? null : fillColor 
-          } 
+        {
+          style: {
+            ...target.style,
+            fill: !shouldRemoveFill,
+            fillColor: shouldRemoveFill ? null : fillColor
+          }
         }
       );
 
