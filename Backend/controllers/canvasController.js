@@ -112,6 +112,58 @@ export const inviteUser = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// @desc    Delete a canvas
+// @route   DELETE /api/canvas/:id
+// @access  Private (Owner only)
+export const deleteCanvas = async (req, res) => {
+    try {
+        const canvas = await Canvas.findOne({ canvasId: req.params.id });
+
+        if (!canvas) {
+            return res.status(404).json({ message: 'Canvas not found' });
+        }
+
+        // Only owner can delete
+        if (canvas.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Only owner can delete this canvas' });
+        }
+
+        await Canvas.deleteOne({ canvasId: req.params.id });
+
+        res.json({ message: 'Canvas deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Toggle favorite status
+// @route   PUT /api/canvas/:id/favorite
+// @access  Private
+export const toggleFavorite = async (req, res) => {
+    try {
+        const canvas = await Canvas.findOne({ canvasId: req.params.id });
+        if (!canvas) return res.status(404).json({ message: 'Canvas not found' });
+
+        // Ensure user is owner or member
+        const isOwner = canvas.owner.toString() === req.user._id.toString();
+        const isMember = canvas.members.some(m => {
+            const memberId = m.user._id ? m.user._id.toString() : m.user.toString();
+            return memberId === req.user._id.toString();
+        });
+
+        if (!isOwner && !isMember) return res.status(403).json({ message: 'Not authorized' });
+
+        // For simplicity, we'll store favorites in a metadata field or just toggle a boolean if we add it to schema
+        // Let's assume we add a 'isFavorite' field to the schema or just use metadata
+        canvas.isFavorite = !canvas.isFavorite;
+        await canvas.save();
+        res.json(canvas);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // @desc    Update canvas name
 // @route   PUT /api/canvas/:id/name
 // @access  Private
@@ -146,6 +198,32 @@ export const updateCanvasName = async (req, res) => {
         res.json(updatedCanvas);
     } catch (error) {
         console.error('[API] Update Canvas Name Error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Remove member from canvas
+// @route   DELETE /api/canvas/:id/members/:userId
+// @access  Private (Owner only)
+export const removeMember = async (req, res) => {
+    try {
+        const canvas = await Canvas.findOne({ canvasId: req.params.id });
+
+        if (!canvas) {
+            return res.status(404).json({ message: 'Canvas not found' });
+        }
+
+        // Only owner can remove members
+        if (canvas.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Only owner can remove collaborators' });
+        }
+
+        // Filter out the member
+        canvas.members = canvas.members.filter(m => m.user.toString() !== req.params.userId);
+        await canvas.save();
+
+        res.json({ message: 'Member removed successfully', canvas });
+    } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };

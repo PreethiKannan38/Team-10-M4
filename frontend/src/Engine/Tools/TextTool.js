@@ -1,139 +1,197 @@
 /**
  * TextTool.js
  * 
- * Text creation and editing tool.
- * Click to create text, type to edit, click elsewhere to finish.
+ * Bulletproof Fix: Click and Drag to create, released to type.
  */
 
 import BaseTool from './BaseTool';
-import { AddObjectCommand } from '../managers/HistoryManager';
+import { AddObjectCommand, ModifyObjectCommand } from '../managers/HistoryManager';
 
 export class TextTool extends BaseTool {
   constructor(engine) {
     super(engine);
+    this.isDragging = false;
     this.isEditing = false;
-    this.textPosition = null;
-    this.currentText = '';
-    this.fontSize = 16;
-    this.fontFamily = 'Arial';
+    this.startPoint = null;
+    this.endPoint = null;
+    this.overlay = null;
+    this.editingObjectId = null;
   }
 
-  /**
-   * Start text editing on pointer down
-   */
   onPointerDown(event, engine) {
-    if (!event.canvasX || !event.canvasY) return;
+    if (event.button !== 0) return;
 
-    // If already editing, finalize current text
+    // If we were already editing, commit it
     if (this.isEditing) {
       this._commitText(engine);
-    }
-
-    // Start new text at click position
-    this.textPosition = { x: event.canvasX, y: event.canvasY };
-    this.currentText = '';
-    this.isEditing = true;
-
-    // In real implementation, would attach a text input overlay here
-    // For now, simulate text input via console
-    console.log('Text tool: Click to place text, then type. Press Enter to confirm.');
-  }
-
-  /**
-   * Not used for text tool (input comes from keyboard)
-   */
-  onPointerMove(event, engine) {
-    // Text tool doesn't respond to drag
-  }
-
-  /**
-   * Handle keyboard input for text
-   * @param {KeyboardEvent} event
-   */
-  onKeyDown(event, engine) {
-    if (!this.isEditing || !this.textPosition) return;
-
-    if (event.key === 'Enter') {
-      this._commitText(engine);
-    } else if (event.key === 'Backspace') {
-      this.currentText = this.currentText.slice(0, -1);
-    } else if (event.key.length === 1) {
-      this.currentText += event.key;
-    }
-  }
-
-  /**
-   * Finalize and commit text to scene
-   * @private
-   */
-  _commitText(engine) {
-    if (!this.textPosition || !this.currentText) {
-      this.isEditing = false;
-      this.textPosition = null;
-      this.currentText = '';
       return;
     }
 
-    // Create text object
-    const textObj = {
-      type: 'text',
-      geometry: {
-        x: this.textPosition.x,
-        y: this.textPosition.y,
-        text: this.currentText
-      },
-      style: {
-        color: engine.state.brushOptions.color || '#000000',
-        fontSize: this.fontSize,
-        fontFamily: this.fontFamily,
-        opacity: engine.state.brushOptions.opacity || 1
-      },
-      layerId: engine.state.activeLayerId
+    this.isDragging = true;
+    this.startPoint = { x: event.canvasX, y: event.canvasY };
+    this.endPoint = { x: event.canvasX, y: event.canvasY };
+  }
+
+  onPointerMove(event, engine) {
+    if (this.isDragging) {
+      this.endPoint = { x: event.canvasX, y: event.canvasY };
+    }
+  }
+
+  onPointerUp(event, engine) {
+    if (!this.isDragging || !this.startPoint) return;
+    this.isDragging = false;
+
+    // Check if it's a drag or just a click
+    const width = Math.abs(this.endPoint.x - this.startPoint.x);
+    const height = Math.abs(this.endPoint.y - this.startPoint.y);
+
+    // If it's a tiny click, provide a reasonable default size
+    if (width < 5 && height < 5) {
+      this.endPoint = {
+        x: this.startPoint.x + 300,
+        y: this.startPoint.y + 120
+      };
+    }
+
+    this.isEditing = true;
+    engine.state.isTyping = true;
+
+    // Create the input overlay
+    this._createInputOverlay(engine);
+  }
+
+  startEditingExisting(obj, screenX, screenY, engine) {
+    this._removeOverlay(engine);
+    this.isEditing = true;
+    this.editingObjectId = obj.id;
+    this.startPoint = { x: obj.geometry.x, y: obj.geometry.y };
+    this.endPoint = {
+      x: obj.geometry.x + (obj.geometry.width || 300),
+      y: obj.geometry.y + (obj.geometry.height || 120)
+    };
+    engine.state.isTyping = true;
+    this._createInputOverlay(engine, obj.geometry.text);
+  }
+
+  _createInputOverlay(engine, initialText = '') {
+    const input = document.createElement('textarea');
+    this.overlay = input;
+
+    // Calculate screen position
+    const rect = engine.canvas.getBoundingClientRect();
+    const x = Math.min(this.startPoint.x, this.endPoint.x) * engine.state.zoom + engine.state.pan.x + rect.left;
+    const y = Math.min(this.startPoint.y, this.endPoint.y) * engine.state.zoom + engine.state.pan.y + rect.top;
+    const w = Math.abs(this.endPoint.x - this.startPoint.x) * engine.state.zoom;
+    const h = Math.abs(this.endPoint.y - this.startPoint.y) * engine.state.zoom;
+
+    const brush = engine.state.brushOptions;
+
+    Object.assign(input.style, {
+      position: 'fixed',
+      left: `${x}px`,
+      top: `${y}px`,
+      width: `${Math.max(w, 200)}px`,
+      height: `${Math.max(h, 80)}px`,
+      background: 'white',
+      color: '#000',
+      border: '4px solid #6366F1',
+      borderRadius: '12px',
+      fontSize: '24px',
+      fontFamily: brush.fontFamily || 'Inter, sans-serif',
+      padding: '16px',
+      zIndex: '2147483647',
+      boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+      outline: 'none',
+      resize: 'both'
+    });
+
+    input.value = initialText;
+    input.placeholder = "Type Your Text Here...";
+    document.body.appendChild(input);
+
+    setTimeout(() => input.focus(), 20);
+
+    // Prevent click-through to canvas
+    input.addEventListener('mousedown', (e) => e.stopPropagation());
+    input.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+    input.onkeydown = (e) => {
+      if (e.key === 'Escape') {
+        this._removeOverlay(engine);
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this._commitText(engine);
+      }
     };
 
-    // Commit to scene
-    const command = new AddObjectCommand(
-      engine,
-      textObj
-    );
-    engine.executeCommand(command);
+    // Auto-save on click away (global listener)
+    const clickAway = (e) => {
+      if (this.overlay && !this.overlay.contains(e.target)) {
+        this._commitText(engine);
+        window.removeEventListener('mousedown', clickAway);
+      }
+    };
+    window.addEventListener('mousedown', clickAway);
+  }
 
-    // Clear editing state
+  _commitText(engine) {
+    if (!this.overlay || !this.isEditing) return;
+    const text = this.overlay.value.trim();
+
+    if (text) {
+      const brush = engine.state.brushOptions;
+      const geometry = {
+        x: Math.min(this.startPoint.x, this.endPoint.x),
+        y: Math.min(this.startPoint.y, this.endPoint.y),
+        width: this.overlay.offsetWidth / engine.state.zoom,
+        height: this.overlay.offsetHeight / engine.state.zoom,
+        text
+      };
+
+      if (this.editingObjectId) {
+        engine.executeCommand(new ModifyObjectCommand(engine, this.editingObjectId, { geometry }));
+      } else {
+        engine.executeCommand(new AddObjectCommand(engine, {
+          type: 'text',
+          geometry,
+          style: {
+            color: brush.color === 'transparent' ? '#000000' : brush.color,
+            fontSize: 24,
+            fontFamily: brush.fontFamily || 'Inter'
+          }
+        }));
+      }
+    }
+
+    this._removeOverlay(engine);
+  }
+
+  _removeOverlay(engine) {
+    if (this.overlay) {
+      this.overlay.remove();
+      this.overlay = null;
+    }
     this.isEditing = false;
-    this.textPosition = null;
-    this.currentText = '';
+    this.editingObjectId = null;
+    if (engine) engine.state.isTyping = false;
   }
 
-  /**
-   * Not used for text tool
-   */
-  onPointerUp(event, engine) {
-    // Text editing continues until Enter is pressed
-  }
+  onDeactivate() { this._removeOverlay(); }
 
-  /**
-   * Preview text being typed
-   */
   renderPreview(ctx, engine) {
-    if (!this.isEditing || !this.textPosition || !this.currentText) return;
-
-    ctx.fillStyle = engine.state.brushOptions.color || '#000000';
-    ctx.font = `${this.fontSize}px ${this.fontFamily}`;
-    ctx.fillText(
-      this.currentText,
-      this.textPosition.x,
-      this.textPosition.y
-    );
-
-    // Draw cursor (blinking line)
-    const metrics = ctx.measureText(this.currentText);
-    const cursorX = this.textPosition.x + metrics.width;
-    ctx.strokeStyle = engine.state.brushOptions.color || '#000000';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(cursorX, this.textPosition.y - this.fontSize);
-    ctx.lineTo(cursorX, this.textPosition.y + 2);
-    ctx.stroke();
+    if (!this.isDragging || !this.startPoint || !this.endPoint) return;
+    ctx.save();
+    ctx.strokeStyle = '#6366F1';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    const x = Math.min(this.startPoint.x, this.endPoint.x);
+    const y = Math.min(this.startPoint.y, this.endPoint.y);
+    const w = Math.abs(this.endPoint.x - this.startPoint.x);
+    const h = Math.abs(this.endPoint.y - this.startPoint.y);
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
   }
 }
 

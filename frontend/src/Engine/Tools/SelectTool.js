@@ -1,8 +1,7 @@
 /**
  * SelectTool.js
  * 
- * Selection and transformation tool.
- * Handles single selection, multi-selection (Lasso), and movement.
+ * Comprehensive Selection: 4-Corner Resizing with accurate hit-detection.
  */
 
 import BaseTool from './BaseTool';
@@ -12,215 +11,164 @@ export class SelectTool extends BaseTool {
   constructor(engine) {
     super(engine);
     this.isDragging = false;
+    this.isResizing = false;
+    this.activeHandle = null;
     this.dragStartX = 0;
     this.dragStartY = 0;
     this.originalGeometry = null;
     this.selectedBounds = null;
-    this.lassoPoints = [];
   }
 
   onPointerDown(event, engine) {
     if (!event.canvasX || !event.canvasY) return;
 
-    if (engine.state.activeTool === 'lasso') {
-      this.lassoPoints = [{ x: event.canvasX, y: event.canvasY }];
-      this.isDragging = true;
-      return;
+    // Handle Resize priority
+    if (this.selectedBounds && engine.state.selectedObjectId) {
+      const handle = this._getHandleAtPoint(event.canvasX, event.canvasY);
+      if (handle) {
+        this.isResizing = true;
+        this.activeHandle = handle;
+        this.dragStartX = event.canvasX;
+        this.dragStartY = event.canvasY;
+        const selected = engine.getObject(engine.state.selectedObjectId);
+        this.originalGeometry = JSON.parse(JSON.stringify(selected.geometry));
+        return;
+      }
     }
 
-    // Move or Select mode
+    // Handle Selection
     const objectsAtPoint = engine.sceneManager.getObjectsAtPoint(event.canvasX, event.canvasY);
-
     if (objectsAtPoint.length > 0) {
       const selected = objectsAtPoint[objectsAtPoint.length - 1];
-      if (selected.locked) return;
-
       engine.state.selectedObjectId = selected.id;
       this.isDragging = true;
       this.dragStartX = event.canvasX;
       this.dragStartY = event.canvasY;
       this.originalGeometry = JSON.parse(JSON.stringify(selected.geometry));
       this._updateSelectionBounds(selected);
+      this._updateSelectionBounds(selected);
       engine.dispatchStateChange('selection', selected.id);
+      if (engine.setSelectionAwareness) engine.setSelectionAwareness([selected.id]);
     } else {
       engine.state.selectedObjectId = null;
       this.selectedBounds = null;
-      this.originalGeometry = null;
       engine.dispatchStateChange('selection', null);
+      if (engine.setSelectionAwareness) engine.setSelectionAwareness([]);
+      engine.canvas.style.cursor = 'default';
     }
   }
 
   onPointerMove(event, engine) {
-    if (!event.canvasX || !event.canvasY || !this.isDragging) return;
+    if (!event.canvasX || !event.canvasY) return;
 
-    if (engine.state.activeTool === 'lasso') {
-      this.lassoPoints.push({ x: event.canvasX, y: event.canvasY });
-      return;
+    // Cursor Feedback
+    if (!this.isDragging && !this.isResizing && this.selectedBounds) {
+      const handle = this._getHandleAtPoint(event.canvasX, event.canvasY);
+      if (handle) {
+        engine.canvas.style.cursor = (handle === 'tl' || handle === 'br') ? 'nwse-resize' : 'nesw-resize';
+      } else {
+        engine.canvas.style.cursor = 'default';
+      }
     }
 
-    const selectedId = engine.state.selectedObjectId;
-    if (!selectedId) return;
+    if (!engine.state.selectedObjectId) return;
 
     const deltaX = event.canvasX - this.dragStartX;
     const deltaY = event.canvasY - this.dragStartY;
+    const obj = engine.getObject(engine.state.selectedObjectId);
+    if (!obj) return;
 
-    const obj = engine.getObject(selectedId);
-    if (!obj || !obj.geometry) return;
+    let geo = JSON.parse(JSON.stringify(obj.geometry));
 
-    let newGeometry = JSON.parse(JSON.stringify(obj.geometry));
+    if (this.isResizing) {
+      this._resize(obj, geo, deltaX, deltaY);
+    } else if (this.isDragging) {
+      this._move(obj, geo, deltaX, deltaY);
+    } else { return; }
 
-    // Move logic for all shape types
-    if (obj.type === 'stroke' || obj.type === 'triangle' || obj.type === 'polygon') {
-      newGeometry.points = newGeometry.points.map(p => ({ x: p.x + deltaX, y: p.y + deltaY }));
-    } else if (obj.type === 'rectangle') {
-      newGeometry.x += deltaX; newGeometry.y += deltaY;
-    } else if (obj.type === 'circle') {
-      newGeometry.cx += deltaX; newGeometry.cy += deltaY;
-    } else if (obj.type === 'line' || obj.type === 'arrow') {
-      newGeometry.x1 += deltaX; newGeometry.y1 += deltaY;
-      newGeometry.x2 += deltaX; newGeometry.y2 += deltaY;
-    }
-
-    engine.updateObject(selectedId, { geometry: newGeometry });
-    this._updateSelectionBounds({ ...obj, geometry: newGeometry });
-
+    engine.updateObject(obj.id, { geometry: geo });
+    this._updateSelectionBounds({ ...obj, geometry: geo });
     this.dragStartX = event.canvasX;
     this.dragStartY = event.canvasY;
   }
 
-  onPointerUp(event, engine) {
-    if (!this.isDragging) return;
+  _move(obj, geo, dx, dy) {
+    if (geo.points) geo.points = geo.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+    else if (geo.cx !== undefined) { geo.cx += dx; geo.cy += dy; }
+    else { geo.x += dx; geo.y += dy; if (geo.x1 !== undefined) { geo.x1 += dx; geo.y1 += dy; geo.x2 += dx; geo.y2 += dy; } }
+  }
 
-    if (engine.state.activeTool === 'lasso') {
-      this._performLassoSelection(engine);
-      this.lassoPoints = [];
-      this.isDragging = false;
-      return;
+  _resize(obj, geo, dx, dy) {
+    if (obj.type === 'rectangle' || obj.type === 'text') {
+      const minSize = 20;
+      switch (this.activeHandle) {
+        case 'br': geo.width = Math.max(minSize, (geo.width || 100) + dx); geo.height = Math.max(minSize, (geo.height || 40) + dy); break;
+        case 'tl': geo.x += dx; geo.y += dy; geo.width = Math.max(minSize, (geo.width || 100) - dx); geo.height = Math.max(minSize, (geo.height || 40) - dy); break;
+        case 'tr': geo.y += dy; geo.width = Math.max(minSize, (geo.width || 100) + dx); geo.height = Math.max(minSize, (geo.height || 40) - dy); break;
+        case 'bl': geo.x += dx; geo.width = Math.max(minSize, (geo.width || 100) - dx); geo.height = Math.max(minSize, (geo.height || 40) + dy); break;
+      }
+    } else if (obj.type === 'circle') {
+      const factor = (this.activeHandle === 'br' || this.activeHandle === 'tr') ? 1 : -1;
+      geo.radius = Math.max(5, geo.radius + (dx * factor));
     }
+  }
 
-    const selectedId = engine.state.selectedObjectId;
-    if (selectedId && this.originalGeometry) {
+  onPointerUp(event, engine) {
+    if (this.isResizing || this.isDragging) {
+      const selectedId = engine.state.selectedObjectId;
       const obj = engine.getObject(selectedId);
       if (obj && JSON.stringify(this.originalGeometry) !== JSON.stringify(obj.geometry)) {
         engine.executeCommand(new TransformObjectCommand(engine, selectedId, this.originalGeometry, obj.geometry));
       }
     }
-
     this.isDragging = false;
-    this.originalGeometry = null;
+    this.isResizing = false;
+    this.activeHandle = null;
   }
 
-  _performLassoSelection(engine) {
-    if (this.lassoPoints.length < 3) return;
-    
-    // Find objects whose center is inside the lasso polygon
-    const objects = Object.values(engine.sceneManager.objects);
-    for (const obj of objects) {
-      if (obj.bounds && this._isPointInPolygon(
-        { x: obj.bounds.x + obj.bounds.width/2, y: obj.bounds.y + obj.bounds.height/2 }, 
-        this.lassoPoints
-      )) {
-        engine.state.selectedObjectId = obj.id;
-        this._updateSelectionBounds(obj);
-        engine.dispatchStateChange('selection', obj.id);
-        break; // For now, just select the first one found
-      }
-    }
-  }
-
-  _isPointInPolygon(point, polygon) {
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i].x, yi = polygon[i].y;
-      const xj = polygon[j].x, yj = polygon[j].y;
-      const intersect = ((yi > point.y) !== (yj > point.y)) &&
-        (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
-      if (intersect) inside = !inside;
-    }
-    return inside;
+  _getHandleAtPoint(x, y) {
+    const b = this.selectedBounds;
+    if (!b) return null;
+    const s = 25; // Large grab area
+    if (Math.abs(x - b.x) < s && Math.abs(y - b.y) < s) return 'tl';
+    if (Math.abs(x - (b.x + b.width)) < s && Math.abs(y - b.y) < s) return 'tr';
+    if (Math.abs(x - (b.x + b.width)) < s && Math.abs(y - (b.y + b.height)) < s) return 'br';
+    if (Math.abs(x - b.x) < s && Math.abs(y - (b.y + b.height)) < s) return 'bl';
+    return null;
   }
 
   _updateSelectionBounds(obj) {
-    const { type, geometry, style } = obj;
-    if (!geometry) {
-      this.selectedBounds = null;
-      return;
-    }
-
-    const padding = (style?.width || 2) / 2 + 10;
+    const { type, geometry } = obj;
     let b = { x: 0, y: 0, w: 0, h: 0 };
-
-    if ((type === 'stroke' || type === 'triangle' || type === 'polygon') && geometry.points) {
+    if (geometry.points) {
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      geometry.points.forEach(p => {
-        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-        minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
-      });
+      geometry.points.forEach(p => { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); });
       b = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
-    } else if (type === 'rectangle') {
-      b = { x: geometry.x, y: geometry.y, w: geometry.width, h: geometry.height };
-    } else if (type === 'circle') {
+    } else if (geometry.cx !== undefined) {
       b = { x: geometry.cx - geometry.radius, y: geometry.cy - geometry.radius, w: geometry.radius * 2, h: geometry.radius * 2 };
-    } else if (type === 'line' || type === 'arrow') {
-      b = { 
-        x: Math.min(geometry.x1, geometry.x2), 
-        y: Math.min(geometry.y1, geometry.y2), 
-        w: Math.abs(geometry.x1 - geometry.x2), 
-        h: Math.abs(geometry.y1 - geometry.y2) 
-      };
+    } else {
+      const w = geometry.width || (geometry.x1 !== undefined ? Math.abs(geometry.x1 - geometry.x2) : 100);
+      const h = geometry.height || (geometry.y1 !== undefined ? Math.abs(geometry.y1 - geometry.y2) : 40);
+      const x = geometry.x !== undefined ? geometry.x : Math.min(geometry.x1, geometry.x2);
+      const y = geometry.y !== undefined ? geometry.y : Math.min(geometry.y1, geometry.y2);
+      b = { x, y, w, h };
     }
-
-    this.selectedBounds = {
-      x: b.x - padding,
-      y: b.y - padding,
-      width: b.w + padding * 2,
-      height: b.h + padding * 2
-    };
+    this.selectedBounds = { x: b.x - 15, y: b.y - 15, width: b.w + 30, height: b.h + 30 };
   }
 
   renderPreview(ctx, engine) {
-    // Render Lasso Path
-    if (engine.state.activeTool === 'lasso' && this.lassoPoints.length > 1) {
-      ctx.save();
-      ctx.strokeStyle = '#8b5cf6';
-      ctx.setLineDash([5, 5]);
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(this.lassoPoints[0].x, this.lassoPoints[0].y);
-      this.lassoPoints.forEach(p => ctx.lineTo(p.x, p.y));
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Render Selection Box
     if (this.selectedBounds && engine.state.selectedObjectId) {
-      const bounds = this.selectedBounds;
-      const handleSize = 8;
-
+      const b = this.selectedBounds;
       ctx.save();
-      ctx.strokeStyle = '#8b5cf6';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
-      ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+      ctx.strokeStyle = '#6366F1';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([8, 4]);
+      ctx.strokeRect(b.x, b.y, b.width, b.height);
       ctx.setLineDash([]);
-
       ctx.fillStyle = 'white';
-      ctx.strokeStyle = '#8b5cf6';
-      ctx.lineWidth = 2;
-      
-      const handles = [
-        [bounds.x, bounds.y],
-        [bounds.x + bounds.width, bounds.y],
-        [bounds.x + bounds.width, bounds.y + bounds.height],
-        [bounds.x, bounds.y + bounds.height],
-      ];
-
-      for (const [hx, hy] of handles) {
-        ctx.beginPath();
-        ctx.rect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
-        ctx.fill();
-        ctx.stroke();
-      }
+      [[b.x, b.y], [b.x + b.width, b.y], [b.x + b.width, b.y + b.height], [b.x, b.y + b.height]].forEach(([hx, hy]) => {
+        ctx.beginPath(); ctx.arc(hx, hy, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      });
       ctx.restore();
     }
   }

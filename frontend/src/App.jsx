@@ -7,14 +7,30 @@ import Canvas from './components/Canvas';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Register from './components/Register';
+import LandingPage from './components/LandingPage';
+import Profile from './components/Profile';
 
 import axios from 'axios';
 
 // Simple Auth Guard
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  if (!token) {
+  const isGuest = localStorage.getItem('isGuest') === 'true';
+
+  // If neither, go to login
+  if (!token && !isGuest) {
     return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+// Public Route Guard
+const PublicRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const isGuest = localStorage.getItem('isGuest') === 'true';
+
+  if (token || isGuest) {
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 };
@@ -26,6 +42,8 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [brushColor, setBrushColor] = useState('#8b5cf6');
   const [brushSize, setBrushSize] = useState(5);
   const [brushOpacity, setBrushOpacity] = useState(100);
+  const [fontFamily, setFontFamily] = useState('Inter, sans-serif');
+  const [eraserStrength, setEraserStrength] = useState(100);
   const [gridOpacity, setGridOpacity] = useState(30);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
@@ -42,7 +60,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await axios.get(`http://localhost:5000/api/canvas/${canvasId}`, {
+      const res = await axios.get(`http://localhost:5001/api/canvas/${canvasId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCanvasMetadata(res.data);
@@ -51,11 +69,22 @@ function CanvasWorkspace({ canvasEngineRef }) {
     }
   };
 
+  // Compute User Role
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const getRole = () => {
+    if (!canvasMetadata) return 'viewer'; // Default until loaded
+    const isOwner = canvasMetadata.owner?._id === currentUser._id || canvasMetadata.owner === currentUser._id;
+    if (isOwner) return 'owner';
+    const member = canvasMetadata.members?.find(m => (m.user?._id || m.user) === currentUser._id);
+    return member?.role || 'viewer';
+  };
+  const userRole = getRole();
+
   const handleNameChange = async (newName) => {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await axios.put(`http://localhost:5000/api/canvas/${canvasId}/name`,
+      const res = await axios.put(`http://localhost:5001/api/canvas/${canvasId}/name`,
         { name: newName },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -123,28 +152,37 @@ function CanvasWorkspace({ canvasEngineRef }) {
 
       <div className="h-20 shrink-0 relative z-50">
         <TopBar
-          canvasName={canvasMetadata?.name} // Passed canvasName
-          onNameChange={handleNameChange} // Passed onNameChange
+          canvas={{
+            canvasId,
+            owner: canvasMetadata?.owner,
+            members: canvasMetadata?.members,
+            refetch: fetchCanvasMetadata
+          }}
+          canvasName={canvasMetadata?.name}
+          onNameChange={handleNameChange}
           onClear={clearCanvas}
-          onDashboard={() => navigate('/')}
-          onLogout={onLogout} // Used the extracted onLogout
+          onDashboard={() => navigate('/dashboard')}
+          onLogout={onLogout}
+          userRole={userRole}
         />
       </div>
 
       <div className="flex-1 flex overflow-hidden relative">
-        <button
-          onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-          className={`absolute top-1/2 -translate-y-1/2 z-30 w-8 h-25 bg-white/80 backdrop-blur-md border border-slate-200 border-l-0 rounded-r-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isToolbarOpen ? 'left-[90px]' : 'left-0'}`}
-        >
-          <div className={`transition-transform duration-500 ${isToolbarOpen ? '' : 'rotate-180'}`}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-          </div>
-        </button>
+        {userRole !== 'viewer' && (
+          <button
+            onClick={() => setIsToolbarOpen(!isToolbarOpen)}
+            className={`absolute top-1/2 -translate-y-1/2 z-30 w-8 h-25 bg-white/80 backdrop-blur-md border border-slate-200 border-l-0 rounded-r-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isToolbarOpen ? 'left-[112px]' : 'left-0'}`}
+          >
+            <div className={`transition-transform duration-500 ${isToolbarOpen ? '' : 'rotate-180'}`}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </div>
+          </button>
+        )}
 
         <aside className={`absolute top-0 bottom-0 left-0 z-40 px-6 py-8 flex items-center transition-all duration-500 ease-spring ${isToolbarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-150px] opacity-0 pointer-events-none'}`}>
-          <Toolbar activeTool={activeTool} onToolChange={setActiveTool} onAction={handleAction} />
+          <Toolbar activeTool={activeTool} onToolChange={setActiveTool} onAction={handleAction} userRole={userRole} />
         </aside>
 
         <main className="flex-1 relative flex items-center justify-center">
@@ -156,22 +194,28 @@ function CanvasWorkspace({ canvasEngineRef }) {
               brushColor={brushColor}
               brushSize={brushSize}
               brushOpacity={brushOpacity}
+              fontFamily={fontFamily}
+              eraserStrength={eraserStrength}
               activeLayer={activeLayer}
               fillEnabled={fillEnabled}
               gridOpacity={gridOpacity}
+              userRole={userRole}
+              currentUser={currentUser}
             />
           </div>
 
-          <button
-            onClick={() => setIsPropertiesOpen(!isPropertiesOpen)}
-            className={`absolute top-1/2 -translate-y-1/2 z-50 w-8 h-32 bg-white/80 backdrop-blur-md border border-slate-200 border-r-0 rounded-l-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isPropertiesOpen ? 'right-[320px]' : 'right-0'}`}
-          >
-            <div className={`transition-transform duration-500 ${isPropertiesOpen ? '' : 'rotate-180'}`}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6"></polyline>
-              </svg>
-            </div>
-          </button>
+          {userRole !== 'viewer' && (
+            <button
+              onClick={() => setIsPropertiesOpen(!isPropertiesOpen)}
+              className={`absolute top-1/2 -translate-y-1/2 z-50 w-8 h-32 bg-white/80 backdrop-blur-md border border-slate-200 border-r-0 rounded-l-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isPropertiesOpen ? 'right-[320px]' : 'right-0'}`}
+            >
+              <div className={`transition-transform duration-500 ${isPropertiesOpen ? '' : 'rotate-180'}`}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </div>
+            </button>
+          )}
 
           <div className={`absolute top-6 bottom-6 right-6 z-40 transition-all duration-500 ease-spring ${isPropertiesOpen ? 'translate-x-0 opacity-100' : 'translate-x-[360px] opacity-0 pointer-events-none'}`}>
             <Footer
@@ -179,6 +223,11 @@ function CanvasWorkspace({ canvasEngineRef }) {
               strokeWidth={brushSize}
               strokeOpacity={brushOpacity}
               gridOpacity={gridOpacity}
+              fontFamily={fontFamily}
+              activeTool={activeTool}
+              eraserStrength={eraserStrength}
+              onEraserStrengthChange={setEraserStrength}
+              onFontFamilyChange={setFontFamily}
               onBrushColorChange={setBrushColor}
               onStrokeWidthChange={setBrushSize}
               onStrokeOpacityChange={setBrushOpacity}
@@ -217,13 +266,30 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        } />
+        <Route path="/register" element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        } />
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           }
         />
@@ -235,6 +301,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

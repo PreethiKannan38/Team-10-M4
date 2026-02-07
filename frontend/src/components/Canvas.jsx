@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { CanvasEngineController } from '../Engine/CanvasEngineController';
 
-export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, activeLayer, fillEnabled, gridOpacity, canvasId }) {
+export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, fontFamily, eraserStrength, activeLayer, fillEnabled, gridOpacity, canvasId, userRole, currentUser }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -17,7 +17,7 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
       }
     };
 
-    const engine = new CanvasEngineController(canvasRef.current, containerRef.current, canvasId);
+    const engine = new CanvasEngineController(canvasRef.current, containerRef.current, canvasId, userRole);
     if (canvasEngineRef) canvasEngineRef.current = engine;
 
     const handleWheel = (e) => {
@@ -37,8 +37,10 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
       color: brushColor,
       width: brushSize,
       opacity: brushOpacity / 100,
+      fontFamily: fontFamily
     });
 
+    engine.setEraserStrength(eraserStrength);
     engine.setTool(activeTool || 'draw');
 
     return () => {
@@ -48,14 +50,21 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
   }, [canvasId]);
 
   useEffect(() => {
-    if (canvasEngineRef?.current && (brushColor || brushSize || brushOpacity !== undefined)) {
+    if (canvasEngineRef?.current && (brushColor || brushSize || brushOpacity !== undefined || fontFamily)) {
       canvasEngineRef.current.setBrushOptions({
         color: brushColor,
         width: brushSize,
         opacity: brushOpacity / 100,
+        fontFamily: fontFamily
       });
     }
-  }, [brushColor, brushSize, brushOpacity, canvasEngineRef]);
+  }, [brushColor, brushSize, brushOpacity, fontFamily, canvasEngineRef]);
+
+  useEffect(() => {
+    if (canvasEngineRef?.current && eraserStrength !== undefined) {
+      canvasEngineRef.current.setEraserStrength(eraserStrength);
+    }
+  }, [eraserStrength, canvasEngineRef]);
 
   useEffect(() => {
     if (canvasEngineRef?.current && activeTool) {
@@ -76,10 +85,27 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
   }, [fillEnabled, canvasEngineRef]);
 
   useEffect(() => {
+    if (canvasEngineRef?.current && userRole) {
+      canvasEngineRef.current.setUserRole(userRole);
+    }
+  }, [userRole, canvasEngineRef]);
+
+  useEffect(() => {
     if (canvasEngineRef?.current && gridOpacity !== undefined) {
       canvasEngineRef.current.setGridOpacity(gridOpacity / 100);
     }
   }, [gridOpacity, canvasEngineRef]);
+
+  useEffect(() => {
+    if (canvasEngineRef?.current && currentUser) {
+      // Ensure we have a color
+      const userWithColor = {
+        ...currentUser,
+        color: currentUser.color || '#' + Math.floor(Math.random() * 16777215).toString(16)
+      };
+      canvasEngineRef.current.setLocalUser(userWithColor);
+    }
+  }, [currentUser, canvasEngineRef]);
 
   return (
     <div ref={containerRef} className="w-full h-full bg-white">

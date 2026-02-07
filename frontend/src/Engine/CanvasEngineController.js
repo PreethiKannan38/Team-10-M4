@@ -10,23 +10,30 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { SceneManager } from './managers/SceneManager';
 import { LayerManager } from './managers/LayerManager';
-import { HistoryManager } from './managers/HistoryManager';
+import HistoryManager, { RemoveObjectCommand } from './managers/HistoryManager';
 import { CoordinateMapper } from './utils/CoordinateMapper';
 import { BoundsCalculation } from './utils/BoundsCalculation';
 import ToolManager from './ToolManager';
 
 export class CanvasEngineController {
-  constructor(canvas, container, roomId = 'drawing-room') {
+  constructor(canvas, container, roomId = 'drawing-room', userRole = 'viewer') {
     this.canvas = canvas;
     this.container = container;
     this.ctx = canvas.getContext('2d');
 
     // === YJS INITIALIZATION ===
     this.doc = new Y.Doc();
-    this.provider = new WebsocketProvider('ws://localhost:5000', roomId, this.doc);
+    this.provider = new WebsocketProvider('ws://localhost:5001', roomId, this.doc);
 
     this.provider.on('status', event => {
       console.log('Yjs WebSocket Status:', event.status);
+    });
+
+    // === AWARENESS ===
+    this.awareness = this.provider.awareness;
+    this.awareness.on('change', () => {
+      // Re-render when awareness changes (someone selects/deselects)
+      this.render();
     });
 
     this.yObjects = this.doc.getMap('objects');
@@ -43,6 +50,7 @@ export class CanvasEngineController {
         color: '#217BF4',
         width: 5,
         opacity: 1.0,
+        fontFamily: 'Inter, sans-serif',
         smoothing: 0.4,
         hardness: 1.0,
       },
@@ -50,7 +58,10 @@ export class CanvasEngineController {
       pan: { x: 0, y: 0 },
       activeLayerId: null,
       fillEnabled: false,
+      eraserStrength: 100, // Default to 100% (Full delete)
+      eraserStrength: 100, // Default to 100% (Full delete)
       gridOpacity: 0.15,
+      userRole: userRole,
     };
 
     // === MANAGER INITIALIZATION ===
@@ -104,6 +115,27 @@ export class CanvasEngineController {
     this.feedbackTimeout = setTimeout(() => {
       this.feedbackActive = false;
     }, 1500);
+  }
+
+  // --- AWARENESS METHODS ---
+
+  setLocalUser(user) {
+    if (!user) return;
+    this.awareness.setLocalStateField('user', {
+      name: user.name,
+      color: user.color,
+      id: user.id
+    });
+  }
+
+  setSelectionAwareness(selectedIds) {
+    this.awareness.setLocalStateField('selection', selectedIds);
+    // Also trigger local state change for UI if needed
+    if (selectedIds.length > 0) {
+      this.dispatchStateChange('selection', selectedIds[0]);
+    } else {
+      this.dispatchStateChange('selection', null);
+    }
   }
 
   setupYjsListeners() {
@@ -209,6 +241,28 @@ export class CanvasEngineController {
     this.syncFromYjs();
   }
 
+  setUserRole(role) {
+    this.state.userRole = role;
+    this.dispatchStateChange('userRole', role);
+    if (role === 'viewer') {
+      this.cancelCurrentTool();
+      this.setTool('select');
+      this.canvas.style.cursor = 'default';
+    }
+  }
+
+  canEdit() {
+    return this.state.userRole !== 'viewer';
+  }
+
+  cancelCurrentTool() {
+    if (this.currentTool && typeof this.currentTool.onDeactivate === 'function') {
+      this.currentTool.onDeactivate();
+    }
+    this.currentTool = null;
+    this.state.isDrawing = false;
+  }
+
   // --- PUBLIC API ---
 
   setTool(toolType) {
@@ -231,6 +285,7 @@ export class CanvasEngineController {
   }
 
   addObject(object) {
+    if (!this.canEdit()) return null;
     const id = object.id || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2));
 
     // We'll determine the layer inside the transaction to ensure atomicity
@@ -266,6 +321,8 @@ export class CanvasEngineController {
           width: object.style?.width || 5,
           opacity: object.style?.opacity || 1.0,
           fillColor: object.style?.fillColor || 'transparent',
+          fontFamily: object.style?.fontFamily || 'Inter, sans-serif',
+          fontSize: object.style?.fontSize || 24,
         },
         bounds,
       };
@@ -294,6 +351,7 @@ export class CanvasEngineController {
   }
 
   removeObject(objectId) {
+    if (!this.canEdit()) return;
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
 
@@ -304,13 +362,14 @@ export class CanvasEngineController {
       if (layerIndex !== -1) {
         const layer = this.yLayers.get(layerIndex);
         const updatedLayer = { ...layer, objects: layer.objects.filter(id => id !== objectId) };
-        this.yLayers.delete(layerIndex);
+        this.yLayers.delete(layerIndex, 1);
         this.yLayers.insert(layerIndex, [updatedLayer]);
       }
     });
   }
 
   updateObject(objectId, updates) {
+    if (!this.canEdit()) return;
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
 
@@ -340,6 +399,7 @@ export class CanvasEngineController {
       case 'circle': return BoundsCalculation.circleBounds(geometry.cx, geometry.cy, geometry.radius, sw);
       case 'triangle': return BoundsCalculation.strokeBounds(geometry.points, sw);
       case 'polygon': return BoundsCalculation.strokeBounds(geometry.points, sw);
+      case 'text': return { x: geometry.x, y: geometry.y, width: geometry.width || 200, height: geometry.height || 100 };
       default: return null;
     }
   }
@@ -370,6 +430,11 @@ export class CanvasEngineController {
   setFillEnabled(enabled) {
     this.state.fillEnabled = enabled;
     this.dispatchStateChange('fillEnabled', enabled);
+  }
+
+  setEraserStrength(strength) {
+    this.state.eraserStrength = strength;
+    this.dispatchStateChange('eraserStrength', strength);
   }
 
   setGridOpacity(opacity) {
@@ -405,45 +470,46 @@ export class CanvasEngineController {
   // --- EVENTS ---
 
   onPointerDown(event) {
-    // Handle Middle Mouse or Spacebar+LeftClick for panning
     if (event.button === 1 || this.spacePressed) {
       this.state.isPanning = true;
       this.state.lastMousePos = { x: event.clientX, y: event.clientY };
       return;
     }
 
-    if (!this.currentTool) return;
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     this.state.isDrawing = true;
-    this.currentTool.onPointerDown({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    if (this.currentTool) {
+      this.currentTool.onPointerDown({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    }
   }
 
   onPointerMove(event) {
+    const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
+    this.pointerX = coords.x;
+    this.pointerY = coords.y;
+
     if (this.state.isPanning) {
       const dx = event.clientX - this.state.lastMousePos.x;
       const dy = event.clientY - this.state.lastMousePos.y;
-
       this.state.pan.x += dx;
       this.state.pan.y += dy;
-
       this.state.lastMousePos = { x: event.clientX, y: event.clientY };
       this.render();
       return;
     }
 
-    if (!this.currentTool) return;
-    const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
-    this.pointerX = coords.x;
-    this.pointerY = coords.y;
-    this.currentTool.onPointerMove({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    if (this.currentTool) {
+      this.currentTool.onPointerMove({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    }
   }
 
   onPointerUp(event) {
     this.state.isPanning = false;
-    if (!this.currentTool) return;
-    const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     this.state.isDrawing = false;
-    this.currentTool.onPointerUp({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
+    if (this.currentTool) {
+      this.currentTool.onPointerUp({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+    }
   }
 
   screenToCanvasCoords(screenX, screenY) {
@@ -482,12 +548,55 @@ export class CanvasEngineController {
     if (this.currentTool && this.currentTool.renderPreview) {
       this.currentTool.renderPreview(this.ctx, this);
     }
-    this.ctx.restore();
 
-    // Render On-Canvas Feedback (Fixed Screen Space)
-    if (this.feedbackActive) {
-      this.renderFeedback();
-    }
+    // Render Remote Selections
+    this.renderRemoteSelections();
+
+    this.ctx.restore();
+  }
+
+  renderRemoteSelections() {
+    const states = this.awareness.getStates();
+    const currentUser = this.awareness.getLocalState();
+
+    states.forEach((state, clientId) => {
+      if (clientId === this.doc.clientID) return; // Skip self
+
+      const user = state.user;
+      const selection = state.selection;
+
+      if (user && selection && selection.length > 0) {
+        selection.forEach(objId => {
+          const obj = this.yObjects.get(objId);
+          if (obj && obj.bounds) {
+            this._drawRemoteSelection(obj.bounds, user.color || '#F59E0B', user.name || 'User');
+          }
+        });
+      }
+    });
+  }
+
+  _drawRemoteSelection(bounds, color, name) {
+    // Box
+    this.ctx.save();
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 2 / this.state.zoom;
+    this.ctx.strokeRect(bounds.x - 2, bounds.y - 2, bounds.width + 4, bounds.height + 4);
+
+    // Name Label
+    const fontSize = 12 / this.state.zoom;
+    this.ctx.font = `bold ${fontSize}px sans-serif`;
+    const textWidth = this.ctx.measureText(name).width;
+    const padding = 4 / this.state.zoom;
+
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(bounds.x - 2, bounds.y - 2 - fontSize - padding * 2, textWidth + padding * 2, fontSize + padding * 2);
+
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.textBaseline = 'bottom';
+    this.ctx.fillText(name, bounds.x - 2 + padding, bounds.y - 4);
+
+    this.ctx.restore();
   }
 
   renderGrid() {
@@ -522,26 +631,6 @@ export class CanvasEngineController {
       this.ctx.lineTo(endX, y);
     }
     this.ctx.stroke();
-  }
-
-  renderFeedback() {
-    const { width, opacity } = this.state.brushOptions;
-    const x = this.canvas.width / 2;
-    const y = this.canvas.height - 150;
-
-    this.ctx.save();
-    this.ctx.font = 'bold 12px Inter';
-    this.ctx.textAlign = 'center';
-
-    // Size Indicator
-    this.ctx.fillStyle = 'rgba(139, 92, 246, 0.8)';
-    this.ctx.beginPath();
-    this.ctx.arc(x, y, width / 2, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    this.ctx.fillStyle = 'white';
-    this.ctx.fillText(`${width}px • ${Math.round(opacity * 100)}%`, x, y + width / 2 + 20);
-    this.ctx.restore();
   }
 
   renderObject(obj) {
@@ -581,8 +670,19 @@ export class CanvasEngineController {
       this._renderPolygon(geometry.points);
       this._finalizeShape(style);
     } else if (type === 'text') {
-      this.ctx.font = `${style.fontSize || 16}px ${style.fontFamily || 'Arial'}`;
-      this.ctx.fillText(geometry.text, geometry.x, geometry.y);
+      this.ctx.fillStyle = style?.color || '#000000';
+      const fontSize = style?.fontSize || 24;
+      const fontFamily = style?.fontFamily || 'Inter, sans-serif';
+      this.ctx.font = `${fontSize}px ${fontFamily}`;
+      this.ctx.textBaseline = 'top';
+
+      this._renderWrappedText(
+        geometry.text,
+        geometry.x,
+        geometry.y,
+        geometry.width || 200,
+        fontSize * 1.2
+      );
     }
 
     // Draw a bounding box for selected items for extra clarity
@@ -596,6 +696,27 @@ export class CanvasEngineController {
     }
 
     this.ctx.globalAlpha = 1.0;
+  }
+
+  _renderWrappedText(text, x, y, maxWidth, lineHeight) {
+    if (!text) return;
+    const words = text.split(' ');
+    let line = '';
+    let testY = y;
+    const safeMaxWidth = Math.max(maxWidth, 20); // Prevent zero-width crashes
+
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + ' ';
+      const metrics = this.ctx.measureText(testLine);
+      if (metrics.width > safeMaxWidth && n > 0) {
+        this.ctx.fillText(line, x, testY);
+        line = words[n] + ' ';
+        testY += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    this.ctx.fillText(line, x, testY);
   }
 
   _finalizeShape(style) {
@@ -629,11 +750,22 @@ export class CanvasEngineController {
   // --- UTILS ---
 
   executeCommand(command) {
+    if (!this.canEdit()) {
+      console.warn('Blocked: Viewer cannot execute commands');
+      return;
+    }
     this.historyManager.executeCommand(command);
   }
 
-  undo() { this.historyManager.undo(); }
-  redo() { this.historyManager.redo(); }
+  undo() {
+    if (!this.canEdit()) return;
+    this.historyManager.undo();
+  }
+
+  redo() {
+    if (!this.canEdit()) return;
+    this.historyManager.redo();
+  }
 
   setupPointerListeners() {
     this.canvas.addEventListener('pointerdown', e => this.onPointerDown(e));
@@ -641,8 +773,19 @@ export class CanvasEngineController {
     this.canvas.addEventListener('pointerup', e => this.onPointerUp(e));
     this.canvas.addEventListener('pointerleave', e => this.onPointerUp(e));
 
-    // Double click to reset view or toggle pan (optional, but let's add move tool toggle)
-    this.canvas.addEventListener('dblclick', () => {
+    this.canvas.addEventListener('dblclick', (e) => {
+      const coords = this.screenToCanvasCoords(e.clientX, e.clientY);
+      const objects = this.sceneManager.getObjectsAtPoint(coords.x, coords.y);
+      if (objects.length > 0) {
+        const target = objects[objects.length - 1];
+        if (target.type === 'text') {
+          this.setTool('text');
+          if (this.currentTool && this.currentTool.startEditingExisting) {
+            this.currentTool.startEditingExisting(target, e.clientX, e.clientY, this);
+          }
+          return;
+        }
+      }
       this.setTool('move');
     });
   }
@@ -654,6 +797,15 @@ export class CanvasEngineController {
         this.spacePressed = true;
         this.canvas.style.cursor = 'grab';
       }
+
+      // Delete selected object
+      if ((e.key === 'Delete' || e.key === 'Backspace') && this.state.selectedObjectId && !this.state.isTyping) {
+        e.preventDefault();
+        this.executeCommand(new RemoveObjectCommand(this, this.state.selectedObjectId));
+        this.state.selectedObjectId = null;
+        this.dispatchStateChange('selection', null);
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y') && e.shiftKey) { e.preventDefault(); this.redo(); }
     });
