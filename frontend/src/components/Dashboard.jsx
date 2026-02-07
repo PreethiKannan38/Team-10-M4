@@ -57,7 +57,8 @@ const Dashboard = () => {
             const res = await axios.post('http://localhost:5001/api/canvas/create', { name: 'Untitled Canvas' }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            navigate(`/canvas/${res.data.canvasId}`);
+            // Pass state to hint that we are the owner
+            navigate(`/canvas/${res.data.canvasId}`, { state: { isOwner: true } });
         } catch (err) {
             console.error('API failed, trying fallback...', err);
             const fallbackId = `temp-${Math.random().toString(36).substring(2, 9)}`;

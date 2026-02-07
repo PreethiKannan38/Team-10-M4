@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import TopBar from './components/TopBar';
 import Toolbar from './components/Toolbar';
 import Footer from './components/Footer';
@@ -42,6 +42,8 @@ const PublicRoute = ({ children }) => {
 function CanvasWorkspace({ canvasEngineRef }) {
   const { canvasId } = useParams();
   const navigate = useNavigate();
+  
+  // State
   const [activeTool, setActiveTool] = useState('draw');
   const [brushColor, setBrushColor] = useState('#8b5cf6');
   const [brushSize, setBrushSize] = useState(5);
@@ -54,36 +56,35 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [fillEnabled, setFillOn] = useState(false);
   const [canvasMetadata, setCanvasMetadata] = useState(null);
-
   const [activeLayer, setActiveLayer] = useState('default-layer');
 
+  // User & Role Logic
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isGuest = localStorage.getItem('isGuest') === 'true';
+  const token = localStorage.getItem('token');
+
+  // Calculate role - Strictly Viewer by default for security
+  let userRole = 'viewer'; 
   
-  // Calculate role - Default to editor for immediate access
-  let userRole = 'editor'; 
-  
-  if (isGuest) {
-    userRole = 'editor';
-  } else if (canvasMetadata) {
-    const ownerId = canvasMetadata.owner?._id || canvasMetadata.owner;
-    const currentUserId = user._id;
-    
-    // Robust string comparison
+  if (canvasMetadata) {
+    const ownerId = canvasMetadata.owner?._id || canvasMetadata.owner?.id || canvasMetadata.owner;
+    const currentUserId = user._id || user.id;
     const isOwner = ownerId && currentUserId && ownerId.toString() === currentUserId.toString();
     
     if (isOwner) {
       userRole = 'editor';
     } else {
       const memberEntry = canvasMetadata.members?.find(m => {
-        const mId = m.user?._id || m.user;
+        const mId = m.user?._id || m.user?.id || m.user;
         return mId?.toString() === currentUserId?.toString();
       });
       userRole = memberEntry?.role || 'viewer';
     }
-  } else if (localStorage.getItem('token')) {
-    // If we have a token but metadata isn't here yet, default to editor 
-    // so owners don't get blocked during initial load
+  } else if (isGuest && canvasId?.startsWith('guest-')) {
+    userRole = 'editor';
+  } else if (location.state?.isOwner || (token && !canvasMetadata)) {
+    // During initial creation or metadata loading, allow Editor role
+    // if we have the isOwner hint or a valid token
     userRole = 'editor';
   }
 
@@ -206,7 +207,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
         </button>
 
         <aside className={`absolute top-0 bottom-0 left-0 z-40 px-6 py-8 flex items-center transition-all duration-500 ease-spring ${isToolbarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-150px] opacity-0 pointer-events-none'}`}>
-          <Toolbar activeTool={activeTool} onToolChange={setActiveTool} onAction={handleAction} />
+          <Toolbar activeTool={activeTool} onToolChange={setActiveTool} onAction={handleAction} userRole={userRole} />
         </aside>
 
         <main className="flex-1 relative flex items-center justify-center">

@@ -53,7 +53,7 @@ export class CanvasEngineController {
       fillEnabled: false,
       eraserStrength: 100, // Default to 100% (Full delete)
       gridOpacity: 0.15,
-      userRole: 'editor', // Default to editor to prevent lockout
+      userRole: 'editor', // Default to editor locally, App.jsx handles the sync
     };
 
     // === MANAGER INITIALIZATION ===
@@ -234,8 +234,8 @@ export class CanvasEngineController {
   }
 
   addObject(object) {
-    if (this.state.userRole === 'viewer') {
-        console.warn('[Engine] Blocked: Viewers cannot add objects.');
+    if (this.state.userRole !== 'editor') {
+        console.warn('[Engine] Modification blocked: User is not an Editor.');
         return null;
     }
     const id = object.id || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2));
@@ -303,10 +303,7 @@ export class CanvasEngineController {
   }
 
   removeObject(objectId) {
-    if (this.state.userRole === 'viewer') {
-        console.warn('[Engine] Blocked: Viewers cannot remove objects.');
-        return;
-    }
+    if (this.state.userRole !== 'editor') return;
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
 
@@ -324,10 +321,7 @@ export class CanvasEngineController {
   }
 
   updateObject(objectId, updates) {
-    if (this.state.userRole === 'viewer') {
-        console.warn('[Engine] Blocked: Viewers cannot update objects.');
-        return;
-    }
+    if (this.state.userRole !== 'editor') return;
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
 
@@ -363,6 +357,7 @@ export class CanvasEngineController {
   }
 
   clearAll() {
+    if (this.state.userRole === 'viewer') return;
     this.doc.transact(() => {
       // 1. Wipe all objects
       this.yObjects.clear();
