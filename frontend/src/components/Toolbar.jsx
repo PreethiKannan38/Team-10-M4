@@ -77,11 +77,15 @@ export default function Toolbar({ activeTool, onToolChange, onAction, userRole }
   const [openPopup, setOpenPopup] = useState(null)
   const [hoveredTool, setHoveredTool] = useState(null)
 
+  const isViewer = userRole === 'viewer';
+
   const togglePopup = (id) => {
+    if (isViewer) return;
     setOpenPopup(prev => (prev === id ? null : id))
   }
 
   const handleToolClick = (tool) => {
+    if (isViewer) return;
     const isAction = ['undo', 'redo', 'clear', 'export'].includes(tool.id)
     if (isAction) onAction?.(tool.id)
     else onToolChange(tool.id)
@@ -116,11 +120,11 @@ export default function Toolbar({ activeTool, onToolChange, onAction, userRole }
   }
 
   return (
-    <div className="bg-white/90 backdrop-blur-xl rounded-[3rem]
+    <div className={`bg-white/90 backdrop-blur-xl rounded-[3rem]
                     w-16 p-3 py-8
                     flex flex-col items-center gap-0
                     border border-slate-200 shadow-2xl
-                    relative z-[100]">
+                    relative z-[100] ${isViewer ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
 
       {visibleGroups.map((group, i) => {
         const isOpen = openPopup === group.id

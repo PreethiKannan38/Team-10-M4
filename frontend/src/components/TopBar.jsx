@@ -61,20 +61,32 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
 
         <div className="w-[1px] h-6 bg-slate-200" />
 
-        <div className="flex items-center gap-2 group">
-          {isEditing ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
-                className="bg-slate-50 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-              <button
-                onClick={handleNameSubmit}
-                className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100"
+        <div className="flex flex-col">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">
+            {ownerName ? `Owner: ${ownerName}` : 'Private Workspace'}
+          </span>
+          <div className="flex items-center gap-2 group">
+            {isEditing && userRole === 'editor' ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
+                  className="bg-slate-50 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+                <button
+                  onClick={handleNameSubmit}
+                  className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100"
+                >
+                  <Check size={14} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className={`flex items-center gap-2 ${userRole === 'editor' ? 'cursor-pointer' : ''}`}
+                onClick={() => userRole === 'editor' && setIsEditing(true)}
               >
                 <Check size={14} />
               </button>
@@ -91,15 +103,16 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
         </div>
       </div>
 
-      {/* Right: Actions & Profile */}
       <div className="flex items-center gap-3">
         <div className="hidden lg:flex items-center gap-2">
-          <button
-            onClick={onClear}
-            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
-          >
-            Clear Canvas
-          </button>
+          {userRole === 'editor' && (
+            <button
+              onClick={onClear}
+              className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+            >
+              Clear Canvas
+            </button>
+          )}
 
           <button className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
             <Bell className="w-4 h-4" />

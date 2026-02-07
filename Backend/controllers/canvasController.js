@@ -1,6 +1,130 @@
 import Canvas from '../models/Canvas.js';
 import User from '../models/User.js';
-import { v4 as uuidv4 } from 'uuid'; // We might need to install uuid or just use random string
+import Invitation from '../models/Invitation.js';
+
+// @desc    Invite user to canvas by username
+// @route   POST /api/canvas/:id/invite-username
+// @access  Private (Owner only)
+export const inviteUserByUsername = async (req, res) => {
+    const { username, role } = req.body;
+
+    try {
+        const canvas = await Canvas.findOne({ canvasId: req.params.id });
+        if (!canvas) return res.status(404).json({ message: 'Canvas not found' });
+
+        // Robust ID comparison
+        if (canvas.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Only owner can invite collaborators' });
+        }
+
+        const recipient = await User.findOne({ username: username.toLowerCase().trim() });
+        if (!recipient) return res.status(404).json({ message: 'User not found' });
+
+        if (recipient._id.toString() === req.user._id.toString()) {
+            return res.status(400).json({ message: 'You cannot invite yourself' });
+        }
+
+        // Check if already a member
+        const alreadyMember = canvas.members.some(m => {
+            const mId = m.user._id ? m.user._id.toString() : m.user.toString();
+            return mId === recipient._id.toString();
+        });
+        
+        if (alreadyMember) return res.status(400).json({ message: 'User is already a member' });
+
+        // Check for existing pending invitation
+        const existingInvite = await Invitation.findOne({ 
+            canvas: canvas._id, 
+            recipient: recipient._id, 
+            status: 'pending' 
+        });
+        if (existingInvite) return res.status(400).json({ message: 'Invitation already sent' });
+
+        const invitation = await Invitation.create({
+            canvas: canvas._id,
+            sender: req.user._id,
+            recipient: recipient._id,
+            role: role || 'viewer'
+        });
+
+        res.status(201).json({ message: 'Invitation sent successfully', invitation });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get current user's invitations
+// @route   GET /api/canvas/my-invitations
+// @access  Private
+export const getMyInvitations = async (req, res) => {
+    try {
+        const invitations = await Invitation.find({ 
+            recipient: req.user._id, 
+            status: 'pending' 
+        })
+        .populate('sender', 'name username')
+        .populate('canvas', 'name canvasId');
+        res.json(invitations);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Accept invitation
+// @route   PUT /api/canvas/invitation/:id/accept
+// @access  Private
+export const acceptInvitation = async (req, res) => {
+    try {
+        const invitation = await Invitation.findById(req.params.id);
+        if (!invitation) return res.status(404).json({ message: 'Invitation not found' });
+
+        if (invitation.recipient.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        invitation.status = 'accepted';
+        await invitation.save();
+
+        const canvas = await Canvas.findById(invitation.canvas);
+        if (canvas) {
+            // Prevent duplicate membership
+            const exists = canvas.members.some(m => {
+                const mId = m.user._id ? m.user._id.toString() : m.user.toString();
+                return mId === req.user._id.toString();
+            });
+            
+            if (!exists) {
+                canvas.members.push({ user: req.user._id, role: invitation.role });
+                await canvas.save();
+            }
+        }
+
+        res.json({ message: 'Invitation accepted' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Reject invitation
+// @route   PUT /api/canvas/invitation/:id/reject
+// @access  Private
+export const rejectInvitation = async (req, res) => {
+    try {
+        const invitation = await Invitation.findById(req.params.id);
+        if (!invitation) return res.status(404).json({ message: 'Invitation not found' });
+
+        if (invitation.recipient.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        invitation.status = 'rejected';
+        await invitation.save();
+
+        res.json({ message: 'Invitation rejected' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
 
 // @desc    Create a new canvas
 // @route   POST /api/canvas/create

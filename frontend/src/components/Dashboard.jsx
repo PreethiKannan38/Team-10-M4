@@ -5,6 +5,7 @@ import {
     Plus, Layout, Clock, User, ArrowRight, Trash2, LogOut, Search, 
     Grid, List, Settings, Users, Star, Filter, SortAsc, SortDesc 
 } from 'lucide-react';
+import InvitationsList from './InvitationsList';
 
 const Dashboard = () => {
     const [canvases, setCanvases] = useState([]);
@@ -14,7 +15,7 @@ const Dashboard = () => {
     const [viewMode, setViewMode] = useState('grid');
     const [sortBy, setSortBy] = useState('updatedAt'); // updatedAt, name
     const [sortOrder, setSortOrder] = useState('desc'); // asc, desc
-    const [filterBy, setFilterBy] = useState('all'); // all, favorites
+    const [filterBy, setFilterBy] = useState('all'); // all, favorites, shared
     
     const navigate = useNavigate();
     const token = localStorage.getItem('token');
@@ -56,7 +57,8 @@ const Dashboard = () => {
             const res = await axios.post('http://localhost:5001/api/canvas/create', { name: 'Untitled Canvas' }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            navigate(`/canvas/${res.data.canvasId}`);
+            // Pass state to hint that we are the owner
+            navigate(`/canvas/${res.data.canvasId}`, { state: { isOwner: true } });
         } catch (err) {
             console.error('API failed, trying fallback...', err);
             const fallbackId = `temp-${Math.random().toString(36).substring(2, 9)}`;
@@ -92,7 +94,10 @@ const Dashboard = () => {
     const filteredAndSortedCanvases = canvases
         .filter(c => {
             const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesFilter = filterBy === 'all' || (filterBy === 'favorites' && c.isFavorite);
+            let matchesFilter = true;
+            if (filterBy === 'favorites') matchesFilter = c.isFavorite;
+            if (filterBy === 'shared') matchesFilter = c.owner.toString() !== user._id.toString();
+            if (filterBy === 'all') matchesFilter = c.owner.toString() === user._id.toString();
             return matchesSearch && matchesFilter;
         })
         .sort((a, b) => {
@@ -140,7 +145,10 @@ const Dashboard = () => {
                         <User size={20} />
                         <span className="hidden lg:block">Profile Settings</span>
                     </button>
-                    <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl font-bold transition-all">
+                    <button 
+                        onClick={() => setFilterBy('shared')}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filterBy === 'shared' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                    >
                         <Users size={20} />
                         <span className="hidden lg:block">Shared With Me</span>
                     </button>
@@ -219,10 +227,12 @@ const Dashboard = () => {
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-8 lg:p-12">
                     <div className="max-w-7xl mx-auto">
+                        <InvitationsList />
+                        
                         <div className="flex justify-between items-end mb-10">
                             <div>
                                 <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">
-                                    {filterBy === 'favorites' ? 'Favorite Workspaces' : 'My Workspaces'}
+                                    {filterBy === 'favorites' ? 'Favorite Workspaces' : filterBy === 'shared' ? 'Shared Workspaces' : 'My Workspaces'}
                                 </h2>
                                 <p className="text-slate-500 font-medium">Manage and collaborate on your digital canvases.</p>
                             </div>

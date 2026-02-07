@@ -41,6 +41,7 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
     });
 
     engine.setEraserStrength(eraserStrength);
+    engine.setUserRole(userRole || 'editor');
     engine.setTool(activeTool || 'draw');
 
     return () => {
@@ -65,6 +66,12 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
       canvasEngineRef.current.setEraserStrength(eraserStrength);
     }
   }, [eraserStrength, canvasEngineRef]);
+
+  useEffect(() => {
+    if (canvasEngineRef?.current && userRole !== undefined) {
+      canvasEngineRef.current.setUserRole(userRole);
+    }
+  }, [userRole, canvasEngineRef]);
 
   useEffect(() => {
     if (canvasEngineRef?.current && activeTool) {

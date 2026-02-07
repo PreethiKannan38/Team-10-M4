@@ -405,6 +405,7 @@ export class CanvasEngineController {
   }
 
   clearAll() {
+    if (this.state.userRole === 'viewer') return;
     this.doc.transact(() => {
       // 1. Wipe all objects
       this.yObjects.clear();
@@ -442,6 +443,11 @@ export class CanvasEngineController {
     this.render();
   }
 
+  setUserRole(role) {
+    this.state.userRole = role;
+    this.dispatchStateChange('userRole', role);
+  }
+
   /**
    * Set zoom level centered on a specific point
    */
@@ -470,6 +476,8 @@ export class CanvasEngineController {
   // --- EVENTS ---
 
   onPointerDown(event) {
+    if (this.state.userRole === 'viewer') return;
+    
     if (event.button === 1 || this.spacePressed) {
       this.state.isPanning = true;
       this.state.lastMousePos = { x: event.clientX, y: event.clientY };
@@ -498,6 +506,8 @@ export class CanvasEngineController {
       return;
     }
 
+    if (this.state.userRole === 'viewer') return;
+
     if (this.currentTool) {
       this.currentTool.onPointerMove({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
     }
@@ -506,6 +516,8 @@ export class CanvasEngineController {
   onPointerUp(event) {
     this.state.isPanning = false;
     this.state.isDrawing = false;
+    if (this.state.userRole === 'viewer') return;
+    
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     if (this.currentTool) {
       this.currentTool.onPointerUp({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
@@ -806,8 +818,18 @@ export class CanvasEngineController {
         this.dispatchStateChange('selection', null);
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y') && e.shiftKey) { e.preventDefault(); this.redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { 
+        if (this.state.userRole !== 'viewer') {
+            e.preventDefault(); 
+            this.undo(); 
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y') && e.shiftKey) { 
+        if (this.state.userRole !== 'viewer') {
+            e.preventDefault(); 
+            this.redo(); 
+        }
+      }
     });
 
     window.addEventListener('keyup', e => {

@@ -9,53 +9,43 @@ const generateToken = (id) => {
 
 // @desc    Register new user
 // @route   POST /api/auth/register
-// @access  Public
 export const registerUser = async (req, res) => {
     try {
-        let { name, email, password } = req.body;
-        console.log(`Registration attempt for: ${email}`);
-
+        let { name, username, email, password } = req.body;
         email = email.toLowerCase().trim();
+        
+        if (!username) {
+            username = email.split('@')[0] + Math.floor(Math.random() * 1000);
+        }
+        username = username.toLowerCase().trim();
 
         if (!name || !email || !password) {
             return res.status(400).json({ message: 'Please provide all fields' });
         }
 
-        const userExists = await User.findOne({ email });
-
+        const userExists = await User.findOne({ $or: [{ email }, { username }] });
         if (userExists) {
-            console.log(`User already exists: ${email}`);
-            return res.status(400).json({ message: 'User already exists' });
+            return res.status(400).json({ message: 'User with this email or username already exists' });
         }
 
-        console.log(`Creating user in DB: ${email}`);
-        const user = await User.create({
-            name,
-            email,
-            password,
-        });
+        const user = await User.create({ name, username, email, password });
 
         if (user) {
-            console.log(`User created successfully: ${user._id}`);
             res.status(201).json({
                 _id: user._id,
                 name: user.name,
+                username: user.username,
                 email: user.email,
                 token: generateToken(user._id),
             });
-        } else {
-            console.log('User creation failed: Unknown error');
-            res.status(400).json({ message: 'Invalid user data' });
         }
     } catch (error) {
-        console.error('Registration Error:', error);
-        res.status(500).json({ message: error.message || 'Server error during registration' });
+        res.status(500).json({ message: error.message });
     }
 };
 
 // @desc    Authenticate a user
 // @route   POST /api/auth/login
-// @access  Public
 export const loginUser = async (req, res) => {
     try {
         let { email, password } = req.body;
@@ -67,6 +57,7 @@ export const loginUser = async (req, res) => {
             res.json({
                 _id: user._id,
                 name: user.name,
+                username: user.username,
                 email: user.email,
                 token: generateToken(user._id),
             });
@@ -74,37 +65,39 @@ export const loginUser = async (req, res) => {
             res.status(401).json({ message: 'Invalid email or password' });
         }
     } catch (error) {
-        console.error('Login Error:', error);
         res.status(500).json({ message: 'Server error during login' });
     }
 };
 
 // @desc    Get user data
-// @route   GET /api/auth/me
-// @access  Private
 export const getMe = async (req, res) => {
     const user = {
         _id: req.user._id,
         name: req.user.name,
+        username: req.user.username,
         email: req.user.email,
     };
     res.status(200).json(user);
 };
 
-// @desc    Update user profile (name)
-// @route   PUT /api/auth/update-profile
-// @access  Private
+// @desc    Update user profile
 export const updateProfile = async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, username } = req.body;
         const user = await User.findById(req.user._id);
 
         if (user) {
+            if (username && username !== user.username) {
+                const exists = await User.findOne({ username: username.toLowerCase(), _id: { $ne: user._id } });
+                if (exists) return res.status(400).json({ message: 'Username is taken' });
+                user.username = username.toLowerCase().trim();
+            }
             user.name = name || user.name;
             const updatedUser = await user.save();
             res.json({
                 _id: updatedUser._id,
                 name: updatedUser.name,
+                username: updatedUser.username,
                 email: updatedUser.email,
                 token: generateToken(updatedUser._id),
             });
@@ -112,19 +105,15 @@ export const updateProfile = async (req, res) => {
             res.status(404).json({ message: 'User not found' });
         }
     } catch (error) {
-        console.error('Update Profile Error:', error);
-        res.status(500).json({ message: 'Server error during profile update' });
+        res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Update user password
-// @route   PUT /api/auth/update-password
-// @access  Private
+// @desc    Update password
 export const updatePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         const user = await User.findById(req.user._id);
-
         if (user && (await user.matchPassword(currentPassword))) {
             user.password = newPassword;
             await user.save();
@@ -133,7 +122,6 @@ export const updatePassword = async (req, res) => {
             res.status(401).json({ message: 'Invalid current password' });
         }
     } catch (error) {
-        console.error('Update Password Error:', error);
-        res.status(500).json({ message: 'Server error during password update' });
+        res.status(500).json({ message: error.message });
     }
 };
