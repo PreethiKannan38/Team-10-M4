@@ -268,14 +268,14 @@ export const toggleFavorite = async (req, res) => {
     try {
         const canvas = await Canvas.findOne({ canvasId: req.params.id });
         if (!canvas) return res.status(404).json({ message: 'Canvas not found' });
-        
+
         // Ensure user is owner or member
         const isOwner = canvas.owner.toString() === req.user._id.toString();
         const isMember = canvas.members.some(m => {
             const memberId = m.user._id ? m.user._id.toString() : m.user.toString();
             return memberId === req.user._id.toString();
         });
-        
+
         if (!isOwner && !isMember) return res.status(403).json({ message: 'Not authorized' });
 
         // For simplicity, we'll store favorites in a metadata field or just toggle a boolean if we add it to schema

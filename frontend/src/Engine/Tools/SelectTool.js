@@ -46,11 +46,14 @@ export class SelectTool extends BaseTool {
       this.dragStartY = event.canvasY;
       this.originalGeometry = JSON.parse(JSON.stringify(selected.geometry));
       this._updateSelectionBounds(selected);
+      this._updateSelectionBounds(selected);
       engine.dispatchStateChange('selection', selected.id);
+      if (engine.setSelectionAwareness) engine.setSelectionAwareness([selected.id]);
     } else {
       engine.state.selectedObjectId = null;
       this.selectedBounds = null;
       engine.dispatchStateChange('selection', null);
+      if (engine.setSelectionAwareness) engine.setSelectionAwareness([]);
       engine.canvas.style.cursor = 'default';
     }
   }
@@ -60,12 +63,12 @@ export class SelectTool extends BaseTool {
 
     // Cursor Feedback
     if (!this.isDragging && !this.isResizing && this.selectedBounds) {
-        const handle = this._getHandleAtPoint(event.canvasX, event.canvasY);
-        if (handle) {
-            engine.canvas.style.cursor = (handle === 'tl' || handle === 'br') ? 'nwse-resize' : 'nesw-resize';
-        } else {
-            engine.canvas.style.cursor = 'default';
-        }
+      const handle = this._getHandleAtPoint(event.canvasX, event.canvasY);
+      if (handle) {
+        engine.canvas.style.cursor = (handle === 'tl' || handle === 'br') ? 'nwse-resize' : 'nesw-resize';
+      } else {
+        engine.canvas.style.cursor = 'default';
+      }
     }
 
     if (!engine.state.selectedObjectId) return;
@@ -105,18 +108,18 @@ export class SelectTool extends BaseTool {
         case 'bl': geo.x += dx; geo.width = Math.max(minSize, (geo.width || 100) - dx); geo.height = Math.max(minSize, (geo.height || 40) + dy); break;
       }
     } else if (obj.type === 'circle') {
-        const factor = (this.activeHandle === 'br' || this.activeHandle === 'tr') ? 1 : -1;
-        geo.radius = Math.max(5, geo.radius + (dx * factor));
+      const factor = (this.activeHandle === 'br' || this.activeHandle === 'tr') ? 1 : -1;
+      geo.radius = Math.max(5, geo.radius + (dx * factor));
     }
   }
 
   onPointerUp(event, engine) {
     if (this.isResizing || this.isDragging) {
-        const selectedId = engine.state.selectedObjectId;
-        const obj = engine.getObject(selectedId);
-        if (obj && JSON.stringify(this.originalGeometry) !== JSON.stringify(obj.geometry)) {
-            engine.executeCommand(new TransformObjectCommand(engine, selectedId, this.originalGeometry, obj.geometry));
-        }
+      const selectedId = engine.state.selectedObjectId;
+      const obj = engine.getObject(selectedId);
+      if (obj && JSON.stringify(this.originalGeometry) !== JSON.stringify(obj.geometry)) {
+        engine.executeCommand(new TransformObjectCommand(engine, selectedId, this.originalGeometry, obj.geometry));
+      }
     }
     this.isDragging = false;
     this.isResizing = false;
@@ -163,7 +166,7 @@ export class SelectTool extends BaseTool {
       ctx.strokeRect(b.x, b.y, b.width, b.height);
       ctx.setLineDash([]);
       ctx.fillStyle = 'white';
-      [[b.x, b.y], [b.x+b.width, b.y], [b.x+b.width, b.y+b.height], [b.x, b.y+b.height]].forEach(([hx, hy]) => {
+      [[b.x, b.y], [b.x + b.width, b.y], [b.x + b.width, b.y + b.height], [b.x, b.y + b.height]].forEach(([hx, hy]) => {
         ctx.beginPath(); ctx.arc(hx, hy, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       });
       ctx.restore();

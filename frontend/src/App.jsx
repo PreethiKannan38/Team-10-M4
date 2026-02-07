@@ -19,7 +19,7 @@ const ProtectedRoute = ({ children }) => {
   const user = localStorage.getItem('user');
   const isGuest = localStorage.getItem('isGuest') === 'true';
   
-  // Allow if token exists OR if guest mode is active
+  // If neither, go to login
   if (!token && !isGuest) {
     // Double check if user data exists as fallback
     if (user) return children;
@@ -32,7 +32,7 @@ const ProtectedRoute = ({ children }) => {
 const PublicRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   const isGuest = localStorage.getItem('isGuest') === 'true';
-  
+
   if (token || isGuest) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -104,6 +104,17 @@ function CanvasWorkspace({ canvasEngineRef }) {
       console.error('Error fetching canvas metadata:', err);
     }
   };
+
+  // Compute User Role
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const getRole = () => {
+    if (!canvasMetadata) return 'viewer'; // Default until loaded
+    const isOwner = canvasMetadata.owner?._id === currentUser._id || canvasMetadata.owner === currentUser._id;
+    if (isOwner) return 'owner';
+    const member = canvasMetadata.members?.find(m => (m.user?._id || m.user) === currentUser._id);
+    return member?.role || 'viewer';
+  };
+  const userRole = getRole();
 
   const handleNameChange = async (newName) => {
     const token = localStorage.getItem('token');
@@ -177,14 +188,17 @@ function CanvasWorkspace({ canvasEngineRef }) {
 
       <div className="h-20 shrink-0 relative z-50">
         <TopBar
-          canvasName={canvasMetadata?.name} // Passed canvasName
-          onNameChange={handleNameChange} // Passed onNameChange
+          canvas={{
+            canvasId,
+            owner: canvasMetadata?.owner,
+            members: canvasMetadata?.members,
+            refetch: fetchCanvasMetadata
+          }}
+          canvasName={canvasMetadata?.name}
+          onNameChange={handleNameChange}
           onClear={clearCanvas}
           onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout} // Used the extracted onLogout
-          onShare={() => setIsShareModalOpen(true)}
-          userRole={userRole}
-          ownerName={canvasMetadata?.owner?.name}
         />
       </div>
 
@@ -195,16 +209,18 @@ function CanvasWorkspace({ canvasEngineRef }) {
       />
 
       <div className="flex-1 flex overflow-hidden relative">
-        <button
-          onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-          className={`absolute top-1/2 -translate-y-1/2 z-30 w-8 h-25 bg-white/80 backdrop-blur-md border border-slate-200 border-l-0 rounded-r-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isToolbarOpen ? 'left-[112px]' : 'left-0'}`}
-        >
-          <div className={`transition-transform duration-500 ${isToolbarOpen ? '' : 'rotate-180'}`}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-          </div>
-        </button>
+        {userRole !== 'viewer' && (
+          <button
+            onClick={() => setIsToolbarOpen(!isToolbarOpen)}
+            className={`absolute top-1/2 -translate-y-1/2 z-30 w-8 h-25 bg-white/80 backdrop-blur-md border border-slate-200 border-l-0 rounded-r-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isToolbarOpen ? 'left-[112px]' : 'left-0'}`}
+          >
+            <div className={`transition-transform duration-500 ${isToolbarOpen ? '' : 'rotate-180'}`}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </div>
+          </button>
+        )}
 
         <aside className={`absolute top-0 bottom-0 left-0 z-40 px-6 py-8 flex items-center transition-all duration-500 ease-spring ${isToolbarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-150px] opacity-0 pointer-events-none'}`}>
           <Toolbar activeTool={activeTool} onToolChange={setActiveTool} onAction={handleAction} userRole={userRole} />
@@ -224,19 +240,23 @@ function CanvasWorkspace({ canvasEngineRef }) {
               activeLayer={activeLayer}
               fillEnabled={fillEnabled}
               gridOpacity={gridOpacity}
+              userRole={userRole}
+              currentUser={currentUser}
             />
           </div>
 
-          <button
-            onClick={() => setIsPropertiesOpen(!isPropertiesOpen)}
-            className={`absolute top-1/2 -translate-y-1/2 z-50 w-8 h-32 bg-white/80 backdrop-blur-md border border-slate-200 border-r-0 rounded-l-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isPropertiesOpen ? 'right-[320px]' : 'right-0'}`}
-          >
-            <div className={`transition-transform duration-500 ${isPropertiesOpen ? '' : 'rotate-180'}`}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6"></polyline>
-              </svg>
-            </div>
-          </button>
+          {userRole !== 'viewer' && (
+            <button
+              onClick={() => setIsPropertiesOpen(!isPropertiesOpen)}
+              className={`absolute top-1/2 -translate-y-1/2 z-50 w-8 h-32 bg-white/80 backdrop-blur-md border border-slate-200 border-r-0 rounded-l-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-xl transition-all duration-500 ease-spring ${isPropertiesOpen ? 'right-[320px]' : 'right-0'}`}
+            >
+              <div className={`transition-transform duration-500 ${isPropertiesOpen ? '' : 'rotate-180'}`}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </div>
+            </button>
+          )}
 
           <div className={`absolute top-6 bottom-6 right-6 z-40 transition-all duration-500 ease-spring ${isPropertiesOpen ? 'translate-x-0 opacity-100' : 'translate-x-[360px] opacity-0 pointer-events-none'}`}>
             <Footer

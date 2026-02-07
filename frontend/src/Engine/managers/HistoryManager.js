@@ -7,319 +7,319 @@
  */
 
 export class HistoryManager {
-  constructor(maxHistorySize = 100) {
-    this.undoStack = []; // Stack of commands that can be undone
-    this.redoStack = []; // Stack of commands that can be redone
-    this.maxHistorySize = maxHistorySize;
-  }
-
-  /**
-   * Execute a command and record it in history
-   * @param {Object} command - Must have execute(), undo(), redo() methods
-   */
-  executeCommand(command) {
-    if (!command || typeof command.execute !== 'function') {
-      throw new Error('Command must have an execute() method');
+    constructor(maxHistorySize = 100) {
+        this.undoStack = []; // Stack of commands that can be undone
+        this.redoStack = []; // Stack of commands that can be redone
+        this.maxHistorySize = maxHistorySize;
     }
 
-    // Execute the command
-    command.execute();
+    /**
+     * Execute a command and record it in history
+     * @param {Object} command - Must have execute(), undo(), redo() methods
+     */
+    executeCommand(command) {
+        if (!command || typeof command.execute !== 'function') {
+            throw new Error('Command must have an execute() method');
+        }
 
-    // Add to undo stack
-    this.undoStack.push(command);
+        // Execute the command
+        command.execute();
 
-    // Clear redo stack when new command is executed
-    this.redoStack = [];
+        // Add to undo stack
+        this.undoStack.push(command);
 
-    // Maintain max history size
-    if (this.undoStack.length > this.maxHistorySize) {
-      this.undoStack.shift();
-    }
-  }
+        // Clear redo stack when new command is executed
+        this.redoStack = [];
 
-  /**
-   * Undo the last command
-   * @returns {boolean} True if undo was successful
-   */
-  undo() {
-    if (this.undoStack.length === 0) return false;
-
-    const command = this.undoStack.pop();
-
-    if (typeof command.undo === 'function') {
-      command.undo();
-    } else {
-      console.warn('Command does not have an undo() method');
-      return false;
+        // Maintain max history size
+        if (this.undoStack.length > this.maxHistorySize) {
+            this.undoStack.shift();
+        }
     }
 
-    this.redoStack.push(command);
-    return true;
-  }
+    /**
+     * Undo the last command
+     * @returns {boolean} True if undo was successful
+     */
+    undo() {
+        if (this.undoStack.length === 0) return false;
 
-  /**
-   * Redo the last undone command
-   * @returns {boolean} True if redo was successful
-   */
-  redo() {
-    if (this.redoStack.length === 0) return false;
+        const command = this.undoStack.pop();
 
-    const command = this.redoStack.pop();
+        if (typeof command.undo === 'function') {
+            command.undo();
+        } else {
+            console.warn('Command does not have an undo() method');
+            return false;
+        }
 
-    if (typeof command.redo === 'function') {
-      command.redo();
-    } else {
-      console.warn('Command does not have a redo() method');
-      return false;
+        this.redoStack.push(command);
+        return true;
     }
 
-    this.undoStack.push(command);
-    return true;
-  }
+    /**
+     * Redo the last undone command
+     * @returns {boolean} True if redo was successful
+     */
+    redo() {
+        if (this.redoStack.length === 0) return false;
 
-  /**
-   * Check if undo is available
-   * @returns {boolean}
-   */
-  canUndo() {
-    return this.undoStack.length > 0;
-  }
+        const command = this.redoStack.pop();
 
-  /**
-   * Check if redo is available
-   * @returns {boolean}
-   */
-  canRedo() {
-    return this.redoStack.length > 0;
-  }
+        if (typeof command.redo === 'function') {
+            command.redo();
+        } else {
+            console.warn('Command does not have a redo() method');
+            return false;
+        }
 
-  /**
-   * Get undo stack size
-   * @returns {number}
-   */
-  getUndoSize() {
-    return this.undoStack.length;
-  }
+        this.undoStack.push(command);
+        return true;
+    }
 
-  /**
-   * Get redo stack size
-   * @returns {number}
-   */
-  getRedoSize() {
-    return this.redoStack.length;
-  }
+    /**
+     * Check if undo is available
+     * @returns {boolean}
+     */
+    canUndo() {
+        return this.undoStack.length > 0;
+    }
 
-  /**
-   * Clear all history
-   */
-  clearHistory() {
-    this.undoStack = [];
-    this.redoStack = [];
-  }
+    /**
+     * Check if redo is available
+     * @returns {boolean}
+     */
+    canRedo() {
+        return this.redoStack.length > 0;
+    }
 
-  /**
-   * Clear only redo stack (useful when non-undoable action occurs)
-   */
-  clearRedo() {
-    this.redoStack = [];
-  }
+    /**
+     * Get undo stack size
+     * @returns {number}
+     */
+    getUndoSize() {
+        return this.undoStack.length;
+    }
 
-  /**
-   * Get last command without removing it
-   * @returns {Object|null}
-   */
-  peekUndo() {
-    return this.undoStack.length > 0 ? this.undoStack[this.undoStack.length - 1] : null;
-  }
+    /**
+     * Get redo stack size
+     * @returns {number}
+     */
+    getRedoSize() {
+        return this.redoStack.length;
+    }
 
-  /**
-   * Get entire history for debugging
-   * @returns {Object}
-   */
-  getHistory() {
-    return {
-      undo: [...this.undoStack],
-      redo: [...this.redoStack],
-    };
-  }
+    /**
+     * Clear all history
+     */
+    clearHistory() {
+        this.undoStack = [];
+        this.redoStack = [];
+    }
+
+    /**
+     * Clear only redo stack (useful when non-undoable action occurs)
+     */
+    clearRedo() {
+        this.redoStack = [];
+    }
+
+    /**
+     * Get last command without removing it
+     * @returns {Object|null}
+     */
+    peekUndo() {
+        return this.undoStack.length > 0 ? this.undoStack[this.undoStack.length - 1] : null;
+    }
+
+    /**
+     * Get entire history for debugging
+     * @returns {Object}
+     */
+    getHistory() {
+        return {
+            undo: [...this.undoStack],
+            redo: [...this.redoStack],
+        };
+    }
 }
 
 /**
  * Base Command class - all commands should extend this
  */
 export class Command {
-  /**
-   * Execute the command
-   */
-  execute() {
-    throw new Error('execute() must be implemented');
-  }
+    /**
+     * Execute the command
+     */
+    execute() {
+        throw new Error('execute() must be implemented');
+    }
 
-  /**
-   * Undo the command
-   */
-  undo() {
-    throw new Error('undo() must be implemented');
-  }
+    /**
+     * Undo the command
+     */
+    undo() {
+        throw new Error('undo() must be implemented');
+    }
 
-  /**
-   * Redo the command
-   */
-  redo() {
-    // Default redo implementation (same as execute)
-    this.execute();
-  }
+    /**
+     * Redo the command
+     */
+    redo() {
+        // Default redo implementation (same as execute)
+        this.execute();
+    }
 }
 
 /**
  * Command for adding an object to the scene
  */
 export class AddObjectCommand extends Command {
-  constructor(engine, object) {
-    super();
-    this.engine = engine;
-    this.object = object;
-    this.objectId = null;
-  }
+    constructor(engine, object) {
+        super();
+        this.engine = engine;
+        this.object = object;
+        this.objectId = null;
+    }
 
-  execute() {
-    const obj = this.engine.addObject(this.object);
-    this.objectId = obj.id;
-  }
+    execute() {
+        const obj = this.engine.addObject(this.object);
+        this.objectId = obj.id;
+    }
 
-  undo() {
-    this.engine.removeObject(this.objectId);
-  }
+    undo() {
+        this.engine.removeObject(this.objectId);
+    }
 
-  redo() {
-    this.execute();
-  }
+    redo() {
+        this.execute();
+    }
 }
 
 /**
  * Command for removing an object from the scene
  */
 export class RemoveObjectCommand extends Command {
-  constructor(engine, objectId) {
-    super();
-    this.engine = engine;
-    this.objectId = objectId;
-    this.objectData = null;
-  }
-
-  execute() {
-    this.objectData = this.engine.getObject(this.objectId);
-    if (this.objectData) {
-      // Store a deep copy to be safe
-      this.objectData = JSON.parse(JSON.stringify(this.objectData));
-      this.engine.removeObject(this.objectId);
+    constructor(engine, objectId) {
+        super();
+        this.engine = engine;
+        this.objectId = objectId;
+        this.objectData = null;
     }
-  }
 
-  undo() {
-    if (this.objectData) {
-      // Use internal addObject logic that preserves ID and layer
-      this.engine.addObject(this.objectData);
+    execute() {
+        this.objectData = this.engine.getObject(this.objectId);
+        if (this.objectData) {
+            // Store a deep copy to be safe
+            this.objectData = JSON.parse(JSON.stringify(this.objectData));
+            this.engine.removeObject(this.objectId);
+        }
     }
-  }
 
-  redo() {
-    this.engine.removeObject(this.objectId);
-  }
+    undo() {
+        if (this.objectData) {
+            // Use internal addObject logic that preserves ID and layer
+            this.engine.addObject(this.objectData);
+        }
+    }
+
+    redo() {
+        this.engine.removeObject(this.objectId);
+    }
 }
 
 /**
  * Command for modifying an object's properties
  */
 export class ModifyObjectCommand extends Command {
-  constructor(engine, objectId, updates) {
-    super();
-    this.engine = engine;
-    this.objectId = objectId;
-    this.updates = updates;
-    this.previousState = null;
-  }
-
-  execute() {
-    const obj = this.engine.getObject(this.objectId);
-    if (obj) {
-      this.previousState = {};
-      for (const key of Object.keys(this.updates)) {
-        this.previousState[key] = obj[key];
-      }
-      this.engine.updateObject(this.objectId, this.updates);
+    constructor(engine, objectId, updates) {
+        super();
+        this.engine = engine;
+        this.objectId = objectId;
+        this.updates = updates;
+        this.previousState = null;
     }
-  }
 
-  undo() {
-    if (this.previousState) {
-      this.engine.updateObject(this.objectId, this.previousState);
+    execute() {
+        const obj = this.engine.getObject(this.objectId);
+        if (obj) {
+            this.previousState = {};
+            for (const key of Object.keys(this.updates)) {
+                this.previousState[key] = obj[key];
+            }
+            this.engine.updateObject(this.objectId, this.updates);
+        }
     }
-  }
 
-  redo() {
-    this.execute();
-  }
+    undo() {
+        if (this.previousState) {
+            this.engine.updateObject(this.objectId, this.previousState);
+        }
+    }
+
+    redo() {
+        this.execute();
+    }
 }
 
 /**
  * Command for moving or transforming an object
  */
 export class TransformObjectCommand extends Command {
-  constructor(engine, objectId, fromGeometry, toGeometry) {
-    super();
-    this.engine = engine;
-    this.objectId = objectId;
-    this.fromGeometry = fromGeometry;
-    this.toGeometry = toGeometry;
-  }
+    constructor(engine, objectId, fromGeometry, toGeometry) {
+        super();
+        this.engine = engine;
+        this.objectId = objectId;
+        this.fromGeometry = fromGeometry;
+        this.toGeometry = toGeometry;
+    }
 
-  execute() {
-    this.engine.updateObject(this.objectId, {
-      geometry: { ...this.toGeometry },
-    });
-  }
+    execute() {
+        this.engine.updateObject(this.objectId, {
+            geometry: { ...this.toGeometry },
+        });
+    }
 
-  undo() {
-    this.engine.updateObject(this.objectId, {
-      geometry: { ...this.fromGeometry },
-    });
-  }
+    undo() {
+        this.engine.updateObject(this.objectId, {
+            geometry: { ...this.fromGeometry },
+        });
+    }
 
-  redo() {
-    this.execute();
-  }
+    redo() {
+        this.execute();
+    }
 }
 
 /**
  * Batch command for grouping multiple commands into a single undoable action
  */
 export class BatchCommand extends Command {
-  constructor(commands = []) {
-    super();
-    this.commands = commands;
-  }
-
-  addCommand(command) {
-    this.commands.push(command);
-  }
-
-  execute() {
-    for (const command of this.commands) {
-      command.execute();
+    constructor(commands = []) {
+        super();
+        this.commands = commands;
     }
-  }
 
-  undo() {
-    // Undo in reverse order
-    for (let i = this.commands.length - 1; i >= 0; i--) {
-      this.commands[i].undo();
+    addCommand(command) {
+        this.commands.push(command);
     }
-  }
 
-  redo() {
-    this.execute();
-  }
+    execute() {
+        for (const command of this.commands) {
+            command.execute();
+        }
+    }
+
+    undo() {
+        // Undo in reverse order
+        for (let i = this.commands.length - 1; i >= 0; i--) {
+            this.commands[i].undo();
+        }
+    }
+
+    redo() {
+        this.execute();
+    }
 }
 
 export default HistoryManager;

@@ -13,7 +13,7 @@ export class EraserTool extends BaseTool {
   constructor(engine) {
     super(engine);
     this.eraserRadius = 20;
-    this.erasedObjects = []; 
+    this.erasedObjects = [];
   }
 
   onPointerDown(event, engine) {
@@ -35,7 +35,7 @@ export class EraserTool extends BaseTool {
   _performErase(x, y, engine) {
     const strength = engine.state.eraserStrength || 100;
     const objects = Object.values(engine.sceneManager.objects);
-    
+
     for (const obj of objects) {
       if (this.erasedObjects.includes(obj.id)) continue;
       if (obj.locked) continue;
@@ -80,7 +80,7 @@ export class EraserTool extends BaseTool {
     // Create a batch command to replace the old stroke with new segments
     const batch = new BatchCommand();
     batch.addCommand(new RemoveObjectCommand(engine, stroke.id));
-    
+
     for (const segment of newSegments) {
       batch.addCommand(new AddObjectCommand(engine, {
         ...stroke,
@@ -91,14 +91,15 @@ export class EraserTool extends BaseTool {
 
     engine.executeCommand(batch);
     // Mark as erased for this drag to prevent infinite splitting
-    this.erasedObjects.push(stroke.id); 
+    this.erasedObjects.push(stroke.id);
   }
 
   _objectIntersectsEraser(obj, eraserX, eraserY, radius) {
     const { type, geometry } = obj;
     if (!geometry) return false;
 
-    if (type === 'stroke' && geometry.points) {
+    // 1. Point-based shapes (Stroke, Triangle, Polygon)
+    if ((type === 'stroke' || type === 'triangle' || type === 'polygon') && geometry.points) {
       return geometry.points.some(p => {
         const dx = p.x - eraserX;
         const dy = p.y - eraserY;
@@ -106,6 +107,24 @@ export class EraserTool extends BaseTool {
       });
     }
 
+    // 2. Line-based shapes (Line, Arrow)
+    if (type === 'line' || type === 'arrow') {
+      // Check endpoints
+      const d1 = (geometry.x1 - eraserX) ** 2 + (geometry.y1 - eraserY) ** 2;
+      const d2 = (geometry.x2 - eraserX) ** 2 + (geometry.y2 - eraserY) ** 2;
+      const r2 = radius * radius;
+
+      if (d1 <= r2 || d2 <= r2) return true;
+
+      // Optional: Check distance to line segment for better UX
+      // (Simple implementation: check midpoint)
+      const midX = (geometry.x1 + geometry.x2) / 2;
+      const midY = (geometry.y1 + geometry.y2) / 2;
+      const dMid = (midX - eraserX) ** 2 + (midY - eraserY) ** 2;
+      return dMid <= r2;
+    }
+
+    // 3. Rectangle
     if (type === 'rectangle') {
       return (
         eraserX >= geometry.x - radius &&
@@ -115,6 +134,7 @@ export class EraserTool extends BaseTool {
       );
     }
 
+    // 4. Circle
     if (type === 'circle') {
       const dx = geometry.cx - eraserX;
       const dy = geometry.cy - eraserY;
