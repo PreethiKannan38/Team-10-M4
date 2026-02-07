@@ -20,7 +20,7 @@ export class TextTool extends BaseTool {
 
   onPointerDown(event, engine) {
     if (event.button !== 0) return;
-    
+
     // If we were already editing, commit it
     if (this.isEditing) {
       this._commitText(engine);
@@ -48,10 +48,10 @@ export class TextTool extends BaseTool {
 
     // If it's a tiny click, provide a reasonable default size
     if (width < 5 && height < 5) {
-        this.endPoint = { 
-            x: this.startPoint.x + 300, 
-            y: this.startPoint.y + 120 
-        };
+      this.endPoint = {
+        x: this.startPoint.x + 300,
+        y: this.startPoint.y + 120
+      };
     }
 
     this.isEditing = true;
@@ -66,9 +66,9 @@ export class TextTool extends BaseTool {
     this.isEditing = true;
     this.editingObjectId = obj.id;
     this.startPoint = { x: obj.geometry.x, y: obj.geometry.y };
-    this.endPoint = { 
-        x: obj.geometry.x + (obj.geometry.width || 300), 
-        y: obj.geometry.y + (obj.geometry.height || 120) 
+    this.endPoint = {
+      x: obj.geometry.x + (obj.geometry.width || 300),
+      y: obj.geometry.y + (obj.geometry.height || 120)
     };
     engine.state.isTyping = true;
     this._createInputOverlay(engine, obj.geometry.text);
@@ -86,7 +86,7 @@ export class TextTool extends BaseTool {
     const h = Math.abs(this.endPoint.y - this.startPoint.y) * engine.state.zoom;
 
     const brush = engine.state.brushOptions;
-    
+
     Object.assign(input.style, {
       position: 'fixed',
       left: `${x}px`,
@@ -109,7 +109,7 @@ export class TextTool extends BaseTool {
     input.value = initialText;
     input.placeholder = "Type Your Text Here...";
     document.body.appendChild(input);
-    
+
     setTimeout(() => input.focus(), 20);
 
     // Prevent click-through to canvas
@@ -128,10 +128,10 @@ export class TextTool extends BaseTool {
 
     // Auto-save on click away (global listener)
     const clickAway = (e) => {
-        if (this.overlay && !this.overlay.contains(e.target)) {
-            this._commitText(engine);
-            window.removeEventListener('mousedown', clickAway);
-        }
+      if (this.overlay && !this.overlay.contains(e.target)) {
+        this._commitText(engine);
+        window.removeEventListener('mousedown', clickAway);
+      }
     };
     window.addEventListener('mousedown', clickAway);
   }
@@ -139,7 +139,7 @@ export class TextTool extends BaseTool {
   _commitText(engine) {
     if (!this.overlay || !this.isEditing) return;
     const text = this.overlay.value.trim();
-    
+
     if (text) {
       const brush = engine.state.brushOptions;
       const geometry = {
@@ -156,10 +156,10 @@ export class TextTool extends BaseTool {
         engine.executeCommand(new AddObjectCommand(engine, {
           type: 'text',
           geometry,
-          style: { 
-            color: brush.color === 'transparent' ? '#000000' : brush.color, 
-            fontSize: 24, 
-            fontFamily: brush.fontFamily || 'Inter' 
+          style: {
+            color: brush.color === 'transparent' ? '#000000' : brush.color,
+            fontSize: 24,
+            fontFamily: brush.fontFamily || 'Inter'
           }
         }));
       }

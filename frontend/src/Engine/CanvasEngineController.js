@@ -10,13 +10,13 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { SceneManager } from './managers/SceneManager';
 import { LayerManager } from './managers/LayerManager';
-import { HistoryManager, RemoveObjectCommand } from './managers/HistoryManager';
+import HistoryManager, { RemoveObjectCommand } from './managers/HistoryManager';
 import { CoordinateMapper } from './utils/CoordinateMapper';
 import { BoundsCalculation } from './utils/BoundsCalculation';
 import ToolManager from './ToolManager';
 
 export class CanvasEngineController {
-  constructor(canvas, container, roomId = 'drawing-room') {
+  constructor(canvas, container, roomId = 'drawing-room', userRole = 'viewer') {
     this.canvas = canvas;
     this.container = container;
     this.ctx = canvas.getContext('2d');
@@ -27,6 +27,13 @@ export class CanvasEngineController {
 
     this.provider.on('status', event => {
       console.log('Yjs WebSocket Status:', event.status);
+    });
+
+    // === AWARENESS ===
+    this.awareness = this.provider.awareness;
+    this.awareness.on('change', () => {
+      // Re-render when awareness changes (someone selects/deselects)
+      this.render();
     });
 
     this.yObjects = this.doc.getMap('objects');
@@ -52,8 +59,9 @@ export class CanvasEngineController {
       activeLayerId: null,
       fillEnabled: false,
       eraserStrength: 100, // Default to 100% (Full delete)
+      eraserStrength: 100, // Default to 100% (Full delete)
       gridOpacity: 0.15,
-      userRole: 'editor', // Default to editor locally, App.jsx handles the sync
+      userRole: userRole,
     };
 
     // === MANAGER INITIALIZATION ===
@@ -107,6 +115,27 @@ export class CanvasEngineController {
     this.feedbackTimeout = setTimeout(() => {
       this.feedbackActive = false;
     }, 1500);
+  }
+
+  // --- AWARENESS METHODS ---
+
+  setLocalUser(user) {
+    if (!user) return;
+    this.awareness.setLocalStateField('user', {
+      name: user.name,
+      color: user.color,
+      id: user.id
+    });
+  }
+
+  setSelectionAwareness(selectedIds) {
+    this.awareness.setLocalStateField('selection', selectedIds);
+    // Also trigger local state change for UI if needed
+    if (selectedIds.length > 0) {
+      this.dispatchStateChange('selection', selectedIds[0]);
+    } else {
+      this.dispatchStateChange('selection', null);
+    }
   }
 
   setupYjsListeners() {
@@ -212,6 +241,28 @@ export class CanvasEngineController {
     this.syncFromYjs();
   }
 
+  setUserRole(role) {
+    this.state.userRole = role;
+    this.dispatchStateChange('userRole', role);
+    if (role === 'viewer') {
+      this.cancelCurrentTool();
+      this.setTool('select');
+      this.canvas.style.cursor = 'default';
+    }
+  }
+
+  canEdit() {
+    return this.state.userRole !== 'viewer';
+  }
+
+  cancelCurrentTool() {
+    if (this.currentTool && typeof this.currentTool.onDeactivate === 'function') {
+      this.currentTool.onDeactivate();
+    }
+    this.currentTool = null;
+    this.state.isDrawing = false;
+  }
+
   // --- PUBLIC API ---
 
   setTool(toolType) {
@@ -234,10 +285,7 @@ export class CanvasEngineController {
   }
 
   addObject(object) {
-    if (this.state.userRole !== 'editor') {
-        console.warn('[Engine] Modification blocked: User is not an Editor.');
-        return null;
-    }
+    if (!this.canEdit()) return null;
     const id = object.id || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2));
 
     // We'll determine the layer inside the transaction to ensure atomicity
@@ -303,7 +351,7 @@ export class CanvasEngineController {
   }
 
   removeObject(objectId) {
-    if (this.state.userRole !== 'editor') return;
+    if (!this.canEdit()) return;
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
 
@@ -314,14 +362,14 @@ export class CanvasEngineController {
       if (layerIndex !== -1) {
         const layer = this.yLayers.get(layerIndex);
         const updatedLayer = { ...layer, objects: layer.objects.filter(id => id !== objectId) };
-        this.yLayers.delete(layerIndex);
+        this.yLayers.delete(layerIndex, 1);
         this.yLayers.insert(layerIndex, [updatedLayer]);
       }
     });
   }
 
   updateObject(objectId, updates) {
-    if (this.state.userRole !== 'editor') return;
+    if (!this.canEdit()) return;
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
 
@@ -439,7 +487,7 @@ export class CanvasEngineController {
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     this.state.isDrawing = true;
     if (this.currentTool) {
-        this.currentTool.onPointerDown({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+      this.currentTool.onPointerDown({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
     }
   }
 
@@ -461,7 +509,7 @@ export class CanvasEngineController {
     if (this.state.userRole === 'viewer') return;
 
     if (this.currentTool) {
-        this.currentTool.onPointerMove({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+      this.currentTool.onPointerMove({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
     }
   }
 
@@ -472,7 +520,7 @@ export class CanvasEngineController {
     
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     if (this.currentTool) {
-        this.currentTool.onPointerUp({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+      this.currentTool.onPointerUp({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
     }
   }
 
@@ -512,6 +560,54 @@ export class CanvasEngineController {
     if (this.currentTool && this.currentTool.renderPreview) {
       this.currentTool.renderPreview(this.ctx, this);
     }
+
+    // Render Remote Selections
+    this.renderRemoteSelections();
+
+    this.ctx.restore();
+  }
+
+  renderRemoteSelections() {
+    const states = this.awareness.getStates();
+    const currentUser = this.awareness.getLocalState();
+
+    states.forEach((state, clientId) => {
+      if (clientId === this.doc.clientID) return; // Skip self
+
+      const user = state.user;
+      const selection = state.selection;
+
+      if (user && selection && selection.length > 0) {
+        selection.forEach(objId => {
+          const obj = this.yObjects.get(objId);
+          if (obj && obj.bounds) {
+            this._drawRemoteSelection(obj.bounds, user.color || '#F59E0B', user.name || 'User');
+          }
+        });
+      }
+    });
+  }
+
+  _drawRemoteSelection(bounds, color, name) {
+    // Box
+    this.ctx.save();
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 2 / this.state.zoom;
+    this.ctx.strokeRect(bounds.x - 2, bounds.y - 2, bounds.width + 4, bounds.height + 4);
+
+    // Name Label
+    const fontSize = 12 / this.state.zoom;
+    this.ctx.font = `bold ${fontSize}px sans-serif`;
+    const textWidth = this.ctx.measureText(name).width;
+    const padding = 4 / this.state.zoom;
+
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(bounds.x - 2, bounds.y - 2 - fontSize - padding * 2, textWidth + padding * 2, fontSize + padding * 2);
+
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.textBaseline = 'bottom';
+    this.ctx.fillText(name, bounds.x - 2 + padding, bounds.y - 4);
+
     this.ctx.restore();
   }
 
@@ -591,12 +687,12 @@ export class CanvasEngineController {
       const fontFamily = style?.fontFamily || 'Inter, sans-serif';
       this.ctx.font = `${fontSize}px ${fontFamily}`;
       this.ctx.textBaseline = 'top';
-      
+
       this._renderWrappedText(
-        geometry.text, 
-        geometry.x, 
-        geometry.y, 
-        geometry.width || 200, 
+        geometry.text,
+        geometry.x,
+        geometry.y,
+        geometry.width || 200,
         fontSize * 1.2
       );
     }
@@ -666,15 +762,22 @@ export class CanvasEngineController {
   // --- UTILS ---
 
   executeCommand(command) {
-    if (this.state.userRole === 'viewer') {
-        console.warn('[Engine] Action blocked: Viewers cannot modify the canvas.');
-        return;
+    if (!this.canEdit()) {
+      console.warn('Blocked: Viewer cannot execute commands');
+      return;
     }
     this.historyManager.executeCommand(command);
   }
 
-  undo() { this.historyManager.undo(); }
-  redo() { this.historyManager.redo(); }
+  undo() {
+    if (!this.canEdit()) return;
+    this.historyManager.undo();
+  }
+
+  redo() {
+    if (!this.canEdit()) return;
+    this.historyManager.redo();
+  }
 
   setupPointerListeners() {
     this.canvas.addEventListener('pointerdown', e => this.onPointerDown(e));
@@ -706,7 +809,7 @@ export class CanvasEngineController {
         this.spacePressed = true;
         this.canvas.style.cursor = 'grab';
       }
-      
+
       // Delete selected object
       if ((e.key === 'Delete' || e.key === 'Backspace') && this.state.selectedObjectId && !this.state.isTyping) {
         e.preventDefault();

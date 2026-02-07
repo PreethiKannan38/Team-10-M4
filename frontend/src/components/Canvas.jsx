@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { CanvasEngineController } from '../Engine/CanvasEngineController';
 
-export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, fontFamily, eraserStrength, userRole, activeLayer, fillEnabled, gridOpacity, canvasId }) {
+export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, fontFamily, eraserStrength, activeLayer, fillEnabled, gridOpacity, canvasId, userRole, currentUser }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -17,7 +17,7 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
       }
     };
 
-    const engine = new CanvasEngineController(canvasRef.current, containerRef.current, canvasId);
+    const engine = new CanvasEngineController(canvasRef.current, containerRef.current, canvasId, userRole);
     if (canvasEngineRef) canvasEngineRef.current = engine;
 
     const handleWheel = (e) => {
@@ -92,10 +92,27 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
   }, [fillEnabled, canvasEngineRef]);
 
   useEffect(() => {
+    if (canvasEngineRef?.current && userRole) {
+      canvasEngineRef.current.setUserRole(userRole);
+    }
+  }, [userRole, canvasEngineRef]);
+
+  useEffect(() => {
     if (canvasEngineRef?.current && gridOpacity !== undefined) {
       canvasEngineRef.current.setGridOpacity(gridOpacity / 100);
     }
   }, [gridOpacity, canvasEngineRef]);
+
+  useEffect(() => {
+    if (canvasEngineRef?.current && currentUser) {
+      // Ensure we have a color
+      const userWithColor = {
+        ...currentUser,
+        color: currentUser.color || '#' + Math.floor(Math.random() * 16777215).toString(16)
+      };
+      canvasEngineRef.current.setLocalUser(userWithColor);
+    }
+  }, [currentUser, canvasEngineRef]);
 
   return (
     <div ref={containerRef} className="w-full h-full bg-white">
