@@ -61,7 +61,6 @@ export class CanvasEngineController {
       eraserStrength: 100, // Default to 100% (Full delete)
       eraserStrength: 100, // Default to 100% (Full delete)
       gridOpacity: 0.15,
-      userRole: userRole,
     };
 
     // === MANAGER INITIALIZATION ===
@@ -285,7 +284,6 @@ export class CanvasEngineController {
   }
 
   addObject(object) {
-    if (!this.canEdit()) return null;
     const id = object.id || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2));
 
     // We'll determine the layer inside the transaction to ensure atomicity
@@ -351,7 +349,6 @@ export class CanvasEngineController {
   }
 
   removeObject(objectId) {
-    if (!this.canEdit()) return;
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
 
@@ -369,7 +366,6 @@ export class CanvasEngineController {
   }
 
   updateObject(objectId, updates) {
-    if (!this.canEdit()) return;
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
 
@@ -405,6 +401,7 @@ export class CanvasEngineController {
   }
 
   clearAll() {
+    if (this.state.userRole === 'viewer') return;
     this.doc.transact(() => {
       // 1. Wipe all objects
       this.yObjects.clear();
@@ -442,6 +439,11 @@ export class CanvasEngineController {
     this.render();
   }
 
+  setUserRole(role) {
+    this.state.userRole = role;
+    this.dispatchStateChange('userRole', role);
+  }
+
   /**
    * Set zoom level centered on a specific point
    */
@@ -470,6 +472,8 @@ export class CanvasEngineController {
   // --- EVENTS ---
 
   onPointerDown(event) {
+    if (this.state.userRole === 'viewer') return;
+    
     if (event.button === 1 || this.spacePressed) {
       this.state.isPanning = true;
       this.state.lastMousePos = { x: event.clientX, y: event.clientY };
@@ -498,6 +502,8 @@ export class CanvasEngineController {
       return;
     }
 
+    if (this.state.userRole === 'viewer') return;
+
     if (this.currentTool) {
       this.currentTool.onPointerMove({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
     }
@@ -506,6 +512,8 @@ export class CanvasEngineController {
   onPointerUp(event) {
     this.state.isPanning = false;
     this.state.isDrawing = false;
+    if (this.state.userRole === 'viewer') return;
+    
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     if (this.currentTool) {
       this.currentTool.onPointerUp({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
@@ -750,10 +758,6 @@ export class CanvasEngineController {
   // --- UTILS ---
 
   executeCommand(command) {
-    if (!this.canEdit()) {
-      console.warn('Blocked: Viewer cannot execute commands');
-      return;
-    }
     this.historyManager.executeCommand(command);
   }
 
@@ -806,8 +810,18 @@ export class CanvasEngineController {
         this.dispatchStateChange('selection', null);
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y') && e.shiftKey) { e.preventDefault(); this.redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { 
+        if (this.state.userRole !== 'viewer') {
+            e.preventDefault(); 
+            this.undo(); 
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y') && e.shiftKey) { 
+        if (this.state.userRole !== 'viewer') {
+            e.preventDefault(); 
+            this.redo(); 
+        }
+      }
     });
 
     window.addEventListener('keyup', e => {

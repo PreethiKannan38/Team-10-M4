@@ -14,6 +14,7 @@ const Profile = () => {
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [newName, setNewName] = useState(user.name || '');
+    const [newUsername, setNewUsername] = useState(user.username || '');
     const [passwords, setPasswords] = useState({
         current: '',
         new: '',
@@ -51,7 +52,7 @@ const Profile = () => {
     };
 
     const handleUpdateName = async () => {
-        if (!newName.trim() || newName === user.name) {
+        if (!newName.trim() || !newUsername.trim()) {
             setIsEditingName(false);
             return;
         }
@@ -61,18 +62,18 @@ const Profile = () => {
 
         try {
             const res = await axios.put('http://localhost:5001/api/auth/update-profile', 
-                { name: newName }, 
+                { name: newName, username: newUsername }, 
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             
             // Update local storage
-            const updatedUser = { ...user, name: res.data.name };
+            const updatedUser = { ...user, name: res.data.name, username: res.data.username };
             localStorage.setItem('user', JSON.stringify(updatedUser));
             
             setStatus({ type: 'success', message: 'Profile updated successfully!' });
             setIsEditingName(false);
         } catch (err) {
-            setStatus({ type: 'error', message: err.response?.data?.message || 'Failed to update name' });
+            setStatus({ type: 'error', message: err.response?.data?.message || 'Failed to update profile' });
         } finally {
             setLoading(false);
         }
@@ -105,7 +106,7 @@ const Profile = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#FAFAFC] text-slate-800 font-sans p-6 lg:p-12">
+        <div className="min-h-screen bg-[#FAFAFC] text-slate-800 font-sans p-6 lg:p-12 overflow-y-auto">
             <div className="max-w-4xl mx-auto">
                 <button 
                     onClick={() => navigate('/dashboard')}
@@ -125,26 +126,38 @@ const Profile = () => {
                             
                             {isEditingName ? (
                                 <div className="flex flex-col gap-2 w-full mb-4">
-                                    <input 
-                                        type="text" 
-                                        value={newName}
-                                        onChange={(e) => setNewName(e.target.value)}
-                                        className="w-full text-center bg-slate-50 border-2 border-indigo-100 rounded-xl py-2 px-4 font-bold outline-none focus:border-indigo-500 transition-all"
-                                        placeholder="Enter Your Name"
-                                        autoFocus
-                                    />
-                                    <div className="flex gap-2">
+                                    <div className="space-y-1 text-left">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Name</label>
+                                        <input 
+                                            type="text" 
+                                            value={newName}
+                                            onChange={(e) => setNewName(e.target.value)}
+                                            className="w-full text-center bg-slate-50 border-2 border-indigo-100 rounded-xl py-2 px-4 font-bold outline-none focus:border-indigo-500 transition-all text-sm"
+                                            placeholder="Enter Name"
+                                        />
+                                    </div>
+                                    <div className="space-y-1 text-left">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Username</label>
+                                        <input 
+                                            type="text" 
+                                            value={newUsername}
+                                            onChange={(e) => setNewUsername(e.target.value)}
+                                            className="w-full text-center bg-slate-50 border-2 border-indigo-100 rounded-xl py-2 px-4 font-bold outline-none focus:border-indigo-500 transition-all text-sm"
+                                            placeholder="Enter Username"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2 mt-2">
                                         <button 
                                             onClick={handleUpdateName}
                                             className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"
                                         >
-                                            <Save size={14} /> Save Name
+                                            <Save size={14} /> Save
                                         </button>
                                         <button 
-                                            onClick={() => { setIsEditingName(false); setNewName(user.name); }}
+                                            onClick={() => { setIsEditingName(false); setNewName(user.name); setNewUsername(user.username); }}
                                             className="flex-1 bg-slate-100 text-slate-400 py-2 rounded-xl text-xs font-black uppercase tracking-widest"
                                         >
-                                            Cancel Edit
+                                            Cancel
                                         </button>
                                     </div>
                                 </div>
@@ -159,7 +172,8 @@ const Profile = () => {
                                             <Edit2 size={16} />
                                         </button>
                                     </div>
-                                    <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">{user.email}</p>
+                                    <p className="text-indigo-500 font-black text-xs uppercase tracking-widest">@{user.username}</p>
+                                    <p className="text-slate-400 font-bold text-[10px] mt-1 uppercase tracking-widest">{user.email}</p>
                                 </div>
                             )}
                             
@@ -190,7 +204,7 @@ const Profile = () => {
                                 </div>
                                 <div>
                                     <h2 className="text-2xl font-black">Security Settings</h2>
-                                    <p className="text-slate-400 font-medium">Update your password</p>
+                                    <p className="text-slate-400 font-medium">Update Your Password</p>
                                 </div>
                             </div>
 
@@ -267,6 +281,10 @@ const Profile = () => {
                                 <div className="p-6 bg-slate-50 rounded-2xl flex justify-between items-center">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</span>
                                     <span className="font-bold text-slate-700">{user.name}</span>
+                                </div>
+                                <div className="p-6 bg-slate-50 rounded-2xl flex justify-between items-center">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Username</span>
+                                    <span className="font-bold text-indigo-600">@{user.username}</span>
                                 </div>
                                 <div className="p-6 bg-slate-50 rounded-2xl flex justify-between items-center">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address</span>

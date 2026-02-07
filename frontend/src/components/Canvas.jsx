@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { CanvasEngineController } from '../Engine/CanvasEngineController';
 
-export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, fontFamily, eraserStrength, activeLayer, fillEnabled, gridOpacity, canvasId, userRole, currentUser }) {
+export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushSize, brushOpacity, fontFamily, eraserStrength, activeLayer, fillEnabled, gridOpacity, canvasId }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -41,6 +41,7 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
     });
 
     engine.setEraserStrength(eraserStrength);
+    engine.setUserRole(userRole || 'editor');
     engine.setTool(activeTool || 'draw');
 
     return () => {
@@ -65,6 +66,12 @@ export default function Canvas({ canvasEngineRef, activeTool, brushColor, brushS
       canvasEngineRef.current.setEraserStrength(eraserStrength);
     }
   }, [eraserStrength, canvasEngineRef]);
+
+  useEffect(() => {
+    if (canvasEngineRef?.current && userRole !== undefined) {
+      canvasEngineRef.current.setUserRole(userRole);
+    }
+  }, [userRole, canvasEngineRef]);
 
   useEffect(() => {
     if (canvasEngineRef?.current && activeTool) {

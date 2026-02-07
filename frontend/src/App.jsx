@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import TopBar from './components/TopBar';
 import Toolbar from './components/Toolbar';
 import Footer from './components/Footer';
@@ -9,16 +9,20 @@ import Login from './components/Login';
 import Register from './components/Register';
 import LandingPage from './components/LandingPage';
 import Profile from './components/Profile';
+import ShareModal from './components/ShareModal';
 
 import axios from 'axios';
 
 // Simple Auth Guard
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
+  const user = localStorage.getItem('user');
   const isGuest = localStorage.getItem('isGuest') === 'true';
-
+  
   // If neither, go to login
   if (!token && !isGuest) {
+    // Double check if user data exists as fallback
+    if (user) return children;
     return <Navigate to="/login" replace />;
   }
   return children;
@@ -38,6 +42,8 @@ const PublicRoute = ({ children }) => {
 function CanvasWorkspace({ canvasEngineRef }) {
   const { canvasId } = useParams();
   const navigate = useNavigate();
+  
+  // State
   const [activeTool, setActiveTool] = useState('draw');
   const [brushColor, setBrushColor] = useState('#8b5cf6');
   const [brushSize, setBrushSize] = useState(5);
@@ -47,10 +53,40 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [gridOpacity, setGridOpacity] = useState(30);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [fillEnabled, setFillOn] = useState(false);
   const [canvasMetadata, setCanvasMetadata] = useState(null);
-
   const [activeLayer, setActiveLayer] = useState('default-layer');
+
+  // User & Role Logic
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isGuest = localStorage.getItem('isGuest') === 'true';
+  const token = localStorage.getItem('token');
+
+  // Calculate role - Strictly Viewer by default for security
+  let userRole = 'viewer'; 
+  
+  if (canvasMetadata) {
+    const ownerId = canvasMetadata.owner?._id || canvasMetadata.owner?.id || canvasMetadata.owner;
+    const currentUserId = user._id || user.id;
+    const isOwner = ownerId && currentUserId && ownerId.toString() === currentUserId.toString();
+    
+    if (isOwner) {
+      userRole = 'editor';
+    } else {
+      const memberEntry = canvasMetadata.members?.find(m => {
+        const mId = m.user?._id || m.user?.id || m.user;
+        return mId?.toString() === currentUserId?.toString();
+      });
+      userRole = memberEntry?.role || 'viewer';
+    }
+  } else if (isGuest && canvasId?.startsWith('guest-')) {
+    userRole = 'editor';
+  } else if (location.state?.isOwner || (token && !canvasMetadata)) {
+    // During initial creation or metadata loading, allow Editor role
+    // if we have the isOwner hint or a valid token
+    userRole = 'editor';
+  }
 
   useEffect(() => {
     fetchCanvasMetadata();
@@ -162,10 +198,15 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onNameChange={handleNameChange}
           onClear={clearCanvas}
           onDashboard={() => navigate('/dashboard')}
-          onLogout={onLogout}
-          userRole={userRole}
+          onLogout={onLogout} // Used the extracted onLogout
         />
       </div>
+
+      <ShareModal 
+        isOpen={isShareModalOpen} 
+        onClose={() => setIsShareModalOpen(false)} 
+        canvasId={canvasId}
+      />
 
       <div className="flex-1 flex overflow-hidden relative">
         {userRole !== 'viewer' && (
