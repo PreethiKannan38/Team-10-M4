@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Mail, Lock, ArrowRight, Loader2, ChevronLeft, Sparkles, Palette, Zap } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 const Login = () => {
     const [formData, setFormData] = useState({ email: '', password: '' });
@@ -19,7 +20,7 @@ const Login = () => {
         setLoading(true);
 
         try {
-            const res = await axios.post('http://localhost:5000/api/auth/login', formData);
+            const res = await axios.post(`${API_BASE_URL}/auth/login`, formData);
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('user', JSON.stringify(res.data));
             navigate('/dashboard');
@@ -135,7 +136,7 @@ const Login = () => {
                 {/* Abstract Background Shapes */}
                 <div className="absolute top-0 right-0 w-[80%] h-[80%] bg-white/10 blur-[120px] rounded-full translate-x-1/2 -translate-y-1/2" />
                 <div className="absolute bottom-0 left-0 w-[60%] h-[60%] bg-purple-500/20 blur-[100px] rounded-full -translate-x-1/2 translate-y-1/2" />
-                
+
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-12">
                         <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center rotate-3 border border-white/30">

@@ -12,8 +12,7 @@ const toolGroups = [
     popup: true,
     groupIcon: MousePointer2,
     tools: [
-      { id: 'select', icon: MousePointer2, name: 'Select Tool' },
-      { id: 'move', icon: Move, name: 'Move Tool' }
+      { id: 'select', icon: MousePointer2, name: 'Selection Tool' }
     ]
   },
   {

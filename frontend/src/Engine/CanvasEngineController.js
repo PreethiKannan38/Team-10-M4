@@ -14,6 +14,7 @@ import HistoryManager, { RemoveObjectCommand } from './managers/HistoryManager';
 import { CoordinateMapper } from './utils/CoordinateMapper';
 import { BoundsCalculation } from './utils/BoundsCalculation';
 import ToolManager from './ToolManager';
+import { WS_BASE_URL } from '../config';
 
 export class CanvasEngineController {
   constructor(canvas, container, roomId = 'drawing-room', userRole = 'viewer') {
@@ -23,7 +24,7 @@ export class CanvasEngineController {
 
     // === YJS INITIALIZATION ===
     this.doc = new Y.Doc();
-    this.provider = new WebsocketProvider('ws://localhost:5001', roomId, this.doc);
+    this.provider = new WebsocketProvider(WS_BASE_URL, roomId, this.doc);
 
     this.provider.on('status', event => {
       console.log('Yjs WebSocket Status:', event.status);
@@ -46,6 +47,7 @@ export class CanvasEngineController {
       isPanning: false,
       lastMousePos: { x: 0, y: 0 },
       selectedObjectId: null,
+      selectedObjectIds: [],
       brushOptions: {
         color: '#217BF4',
         width: 5,
@@ -130,12 +132,13 @@ export class CanvasEngineController {
 
   setSelectionAwareness(selectedIds) {
     this.awareness.setLocalStateField('selection', selectedIds);
-    // Also trigger local state change for UI if needed
-    if (selectedIds.length > 0) {
-      this.dispatchStateChange('selection', selectedIds[0]);
-    } else {
-      this.dispatchStateChange('selection', null);
-    }
+    // Sync local selection state
+    this.state.selectedObjectIds = selectedIds;
+    this.state.selectedObjectId = selectedIds.length > 0 ? selectedIds[selectedIds.length - 1] : null;
+
+    // Trigger local state change for UI if needed
+    this.dispatchStateChange('selection', this.state.selectedObjectId);
+    this.dispatchStateChange('multiSelection', selectedIds);
   }
 
   setupYjsListeners() {
@@ -786,24 +789,37 @@ export class CanvasEngineController {
           return;
         }
       }
-      this.setTool('move');
+      this.setTool('select');
     });
   }
 
   setupWindowListeners() {
     this.spacePressed = false;
+    this.shiftPressed = false;
+
     window.addEventListener('keydown', e => {
       if (e.code === 'Space') {
         this.spacePressed = true;
         this.canvas.style.cursor = 'grab';
       }
 
-      // Delete selected object
-      if ((e.key === 'Delete' || e.key === 'Backspace') && this.state.selectedObjectId && !this.state.isTyping) {
+      if (e.key === 'Shift') {
+        this.shiftPressed = true;
+      }
+
+      // Delete selected objects
+      if ((e.key === 'Delete' || e.key === 'Backspace') && this.state.selectedObjectIds.length > 0 && !this.state.isTyping) {
         e.preventDefault();
-        this.executeCommand(new RemoveObjectCommand(this, this.state.selectedObjectId));
+        const batch = new BatchCommand();
+        this.state.selectedObjectIds.forEach(id => {
+          batch.addCommand(new RemoveObjectCommand(this, id));
+        });
+        this.executeCommand(batch);
+
+        this.state.selectedObjectIds = [];
         this.state.selectedObjectId = null;
         this.dispatchStateChange('selection', null);
+        this.setSelectionAwareness([]);
       }
 
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); }
@@ -814,6 +830,9 @@ export class CanvasEngineController {
       if (e.code === 'Space') {
         this.spacePressed = false;
         this.canvas.style.cursor = 'crosshair';
+      }
+      if (e.key === 'Shift') {
+        this.shiftPressed = false;
       }
     });
   }

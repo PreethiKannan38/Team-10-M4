@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { User, Mail, Lock, ArrowRight, Loader2, ChevronLeft, ShieldCheck, Users, Globe } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 const Register = () => {
     const [formData, setFormData] = useState({ name: '', email: '', password: '' });
@@ -19,7 +20,7 @@ const Register = () => {
         setLoading(true);
 
         try {
-            const res = await axios.post('http://localhost:5000/api/auth/register', formData);
+            const res = await axios.post(`${API_BASE_URL}/auth/register`, formData);
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('user', JSON.stringify(res.data));
             navigate('/dashboard');
@@ -37,7 +38,7 @@ const Register = () => {
                 {/* Abstract Background Decoration */}
                 <div className="absolute top-0 left-0 w-[80%] h-[80%] bg-indigo-500/20 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2" />
                 <div className="absolute bottom-0 right-0 w-[60%] h-[60%] bg-purple-500/10 blur-[100px] rounded-full translate-x-1/2 translate-y-1/2" />
-                
+
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-12">
                         <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center rotate-3">
