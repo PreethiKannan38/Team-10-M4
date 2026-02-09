@@ -34,6 +34,10 @@ const canvasSchema = new mongoose.Schema({
     isFavorite: {
         type: Boolean,
         default: false,
+    },
+    snapshot: {
+        type: String, // Base64 data URL
+        default: null,
     }
 }, { timestamps: true });
 

@@ -227,3 +227,33 @@ export const removeMember = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+// @desc    Save canvas snapshot
+// @route   POST /api/canvas/:id/snapshot
+// @access  Private
+export const saveSnapshot = async (req, res) => {
+    const { snapshot } = req.body; // Expects base64 string
+
+    try {
+        const canvas = await Canvas.findOne({ canvasId: req.params.id });
+
+        if (!canvas) {
+            return res.status(404).json({ message: 'Canvas not found' });
+        }
+
+        // Allow owner or members to save snapshot
+        const isOwner = canvas.owner.toString() === req.user._id.toString();
+        const isMember = canvas.members.some(m => m.user.toString() === req.user._id.toString());
+
+        if (!isOwner && !isMember) {
+            return res.status(403).json({ message: 'Not authorized to update this canvas' });
+        }
+
+        canvas.snapshot = snapshot;
+        await canvas.save();
+
+        res.json({ message: 'Snapshot saved' });
+    } catch (error) {
+        console.error('Snapshot save error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
