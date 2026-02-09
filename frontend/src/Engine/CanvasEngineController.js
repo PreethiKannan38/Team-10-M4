@@ -363,7 +363,19 @@ export class CanvasEngineController {
   exportToImage(format = 'png') {
     const link = document.createElement('a');
     link.download = `drawspace-${Date.now()}.${format}`;
-    link.href = this.canvas.toDataURL('image/png');
+    // JPEG requires a white background explicitly, as transparency becomes black
+    if (format === 'jpeg') {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = this.canvas.width;
+      tempCanvas.height = this.canvas.height;
+      const ctx = tempCanvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      ctx.drawImage(this.canvas, 0, 0);
+      link.href = tempCanvas.toDataURL('image/jpeg', 0.9);
+    } else {
+      link.href = this.canvas.toDataURL('image/png');
+    }
     link.click();
   }
 
