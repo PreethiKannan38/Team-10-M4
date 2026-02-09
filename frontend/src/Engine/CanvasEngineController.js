@@ -367,6 +367,20 @@ export class CanvasEngineController {
     link.click();
   }
 
+  exportToJSON() {
+    const data = {
+      objects: this.yObjects.toJSON(),
+      layers: this.yLayers.toJSON(),
+      version: '1.0.0',
+      exportedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.download = `drawspace-${Date.now()}.json`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+  }
+
   removeObject(objectId) {
     if (!this.canEdit()) return;
     const obj = this.yObjects.get(objectId);
