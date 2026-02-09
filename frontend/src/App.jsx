@@ -11,6 +11,7 @@ import LandingPage from './components/LandingPage';
 import Profile from './components/Profile';
 
 import axios from 'axios';
+import { API_BASE_URL } from './config';
 
 // Simple Auth Guard
 const ProtectedRoute = ({ children }) => {
@@ -60,7 +61,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await axios.get(`http://localhost:5001/api/canvas/${canvasId}`, {
+      const res = await axios.get(`${API_BASE_URL}/canvas/${canvasId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCanvasMetadata(res.data);
@@ -84,7 +85,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await axios.put(`http://localhost:5001/api/canvas/${canvasId}/name`,
+      const res = await axios.put(`${API_BASE_URL}/canvas/${canvasId}/name`,
         { name: newName },
         { headers: { Authorization: `Bearer ${token}` } }
       );

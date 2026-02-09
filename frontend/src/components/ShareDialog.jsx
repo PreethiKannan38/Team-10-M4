@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, UserPlus, Mail, User, Trash2, Loader2, ShieldCheck, Crown, Share2, Copy, Check } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 const ShareDialog = ({ isOpen, onClose, canvasId, owner, members, onUpdate }) => {
     const [identifier, setIdentifier] = useState('');
@@ -29,7 +30,7 @@ const ShareDialog = ({ isOpen, onClose, canvasId, owner, members, onUpdate }) =>
         setLoading(true);
 
         try {
-            await axios.post(`http://localhost:5001/api/canvas/${canvasId}/invite`,
+            await axios.post(`${API_BASE_URL}/canvas/${canvasId}/invite`,
                 { email: identifier, role },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -47,7 +48,7 @@ const ShareDialog = ({ isOpen, onClose, canvasId, owner, members, onUpdate }) =>
         if (!window.confirm('Remove this collaborator?')) return;
         setLoading(true);
         try {
-            await axios.delete(`http://localhost:5001/api/canvas/${canvasId}/members/${userId}`, {
+            await axios.delete(`${API_BASE_URL}/canvas/${canvasId}/members/${userId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setSuccess('Collaborator removed');

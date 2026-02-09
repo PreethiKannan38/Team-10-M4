@@ -71,10 +71,10 @@ export class TextTool extends BaseTool {
       y: obj.geometry.y + (obj.geometry.height || 120)
     };
     engine.state.isTyping = true;
-    this._createInputOverlay(engine, obj.geometry.text);
+    this._createInputOverlay(engine, obj.geometry.text, obj.style);
   }
 
-  _createInputOverlay(engine, initialText = '') {
+  _createInputOverlay(engine, initialText = '', existingStyle = null) {
     const input = document.createElement('textarea');
     this.overlay = input;
 
@@ -85,7 +85,7 @@ export class TextTool extends BaseTool {
     const w = Math.abs(this.endPoint.x - this.startPoint.x) * engine.state.zoom;
     const h = Math.abs(this.endPoint.y - this.startPoint.y) * engine.state.zoom;
 
-    const brush = engine.state.brushOptions;
+    const style = existingStyle || engine.state.brushOptions;
 
     Object.assign(input.style, {
       position: 'fixed',
@@ -94,11 +94,11 @@ export class TextTool extends BaseTool {
       width: `${Math.max(w, 200)}px`,
       height: `${Math.max(h, 80)}px`,
       background: 'white',
-      color: '#000',
+      color: style.color === 'transparent' ? '#000' : style.color,
       border: '4px solid #6366F1',
       borderRadius: '12px',
-      fontSize: '24px',
-      fontFamily: brush.fontFamily || 'Inter, sans-serif',
+      fontSize: `${style.fontSize || 24}px`,
+      fontFamily: style.fontFamily || 'Inter, sans-serif',
       padding: '16px',
       zIndex: '2147483647',
       boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
@@ -127,21 +127,25 @@ export class TextTool extends BaseTool {
     };
 
     // Auto-save on click away (global listener)
-    const clickAway = (e) => {
-      if (this.overlay && !this.overlay.contains(e.target)) {
-        this._commitText(engine);
-        window.removeEventListener('mousedown', clickAway);
-      }
-    };
-    window.addEventListener('mousedown', clickAway);
+    // Delay adding the listener slightly to avoid catching the current event sequence
+    setTimeout(() => {
+      const clickAway = (e) => {
+        if (this.overlay && !this.overlay.contains(e.target)) {
+          this._commitText(engine);
+          window.removeEventListener('mousedown', clickAway);
+        }
+      };
+      window.addEventListener('mousedown', clickAway);
+    }, 100);
   }
 
-  _commitText(engine) {
-    if (!this.overlay || !this.isEditing) return;
+  _commitText(engineArg) {
+    const engine = engineArg || this.engine;
+    if (!this.overlay || !this.isEditing || !engine) return;
     const text = this.overlay.value.trim();
 
     if (text) {
-      const brush = engine.state.brushOptions;
+      const style = this.overlay.style;
       const geometry = {
         x: Math.min(this.startPoint.x, this.endPoint.x),
         y: Math.min(this.startPoint.y, this.endPoint.y),
@@ -153,13 +157,14 @@ export class TextTool extends BaseTool {
       if (this.editingObjectId) {
         engine.executeCommand(new ModifyObjectCommand(engine, this.editingObjectId, { geometry }));
       } else {
+        const brush = engine.state.brushOptions;
         engine.executeCommand(new AddObjectCommand(engine, {
           type: 'text',
           geometry,
           style: {
             color: brush.color === 'transparent' ? '#000000' : brush.color,
-            fontSize: 24,
-            fontFamily: brush.fontFamily || 'Inter'
+            fontSize: parseInt(this.overlay.style.fontSize) || 24,
+            fontFamily: this.overlay.style.fontFamily || 'Inter'
           }
         }));
       }
@@ -168,7 +173,8 @@ export class TextTool extends BaseTool {
     this._removeOverlay(engine);
   }
 
-  _removeOverlay(engine) {
+  _removeOverlay(engineArg) {
+    const engine = engineArg || this.engine;
     if (this.overlay) {
       this.overlay.remove();
       this.overlay = null;
@@ -178,7 +184,9 @@ export class TextTool extends BaseTool {
     if (engine) engine.state.isTyping = false;
   }
 
-  onDeactivate() { this._removeOverlay(); }
+  onDeactivate() {
+    this._commitText();
+  }
 
   renderPreview(ctx, engine) {
     if (!this.isDragging || !this.startPoint || !this.endPoint) return;
