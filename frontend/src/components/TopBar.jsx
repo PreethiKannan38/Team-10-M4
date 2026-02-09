@@ -3,10 +3,12 @@ import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User } 
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 
-export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange, userRole }) {
+export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange, userRole, onExport }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const shareRef = useRef(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef(null);
   const [newName, setNewName] = useState(canvasName || 'Untitled Canvas');
   const navigate = useNavigate();
 
@@ -42,6 +44,9 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
       if (shareRef.current && !shareRef.current.contains(e.target)) {
         setShareOpen(false);
       }
+      if (exportRef.current && !exportRef.current.contains(e.target)) {
+        setExportOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -50,7 +55,10 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
   // Close share popup on Escape
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape') setShareOpen(false);
+      if (e.key === 'Escape') {
+        setShareOpen(false);
+        setExportOpen(false);
+      }
     };
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
@@ -147,9 +155,43 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
             />
           </div>
 
-          <button className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 ml-1">
-            <Download className="w-4 h-4" />
-          </button>
+          <div className="relative" ref={exportRef}>
+            <button
+              onClick={() => setExportOpen(!exportOpen)}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 ml-1"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+
+            {exportOpen && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
+                <div className="px-4 py-2 border-b border-slate-50">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Export As</p>
+                </div>
+                <button
+                  onClick={() => { onExport('png'); setExportOpen(false); }}
+                  className="w-full text-left px-4 py-2 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                >
+                  <span className="w-8">PNG</span>
+                  <span className="text-xs font-normal text-slate-400">High Quality Image</span>
+                </button>
+                <button
+                  onClick={() => { onExport('jpeg'); setExportOpen(false); }}
+                  className="w-full text-left px-4 py-2 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                >
+                  <span className="w-8">JPEG</span>
+                  <span className="text-xs font-normal text-slate-400">smaller file size</span>
+                </button>
+                <button
+                  onClick={() => { onExport('json'); setExportOpen(false); }}
+                  className="w-full text-left px-4 py-2 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                >
+                  <span className="w-8">JSON</span>
+                  <span className="text-xs font-normal text-slate-400">Project Data</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="w-[1px] h-6 bg-slate-200 mx-2" />

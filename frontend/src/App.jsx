@@ -143,6 +143,15 @@ function CanvasWorkspace({ canvasEngineRef }) {
     return () => window.removeEventListener('engineStateChange', handleStateChange);
   }, []);
 
+  const handleExport = (format) => {
+    if (!canvasEngineRef.current) return;
+    if (format === 'json') {
+      canvasEngineRef.current.exportToJSON();
+    } else {
+      canvasEngineRef.current.exportToImage(format);
+    }
+  };
+
   return (
     <div className="w-screen h-screen bg-[#FAFAFC] flex flex-col overflow-hidden font-sans text-slate-800 relative">
       {/* Dynamic Background */}
@@ -164,6 +173,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onClear={clearCanvas}
           onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout}
+          onExport={handleExport}
           userRole={userRole}
         />
       </div>
