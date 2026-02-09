@@ -473,6 +473,7 @@ export class CanvasEngineController {
   // --- EVENTS ---
 
   onPointerDown(event) {
+    event.preventDefault();
     if (event.button === 1 || this.spacePressed) {
       this.state.isPanning = true;
       this.state.lastMousePos = { x: event.clientX, y: event.clientY };
@@ -481,8 +482,22 @@ export class CanvasEngineController {
 
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
     this.state.isDrawing = true;
+
+    // IMPORTANT: Spreading native events ({...event}) strips properties like 'button'.
+    // We must manually construct a decorated event object.
+    const toolEvent = {
+      button: event.button,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      canvasX: coords.x,
+      canvasY: coords.y,
+      shiftKey: event.shiftKey,
+      ctrlKey: (event.ctrlKey || event.metaKey),
+      originalEvent: event
+    };
+
     if (this.currentTool) {
-      this.currentTool.onPointerDown({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+      this.currentTool.onPointerDown(toolEvent, this);
     }
   }
 
@@ -501,8 +516,18 @@ export class CanvasEngineController {
       return;
     }
 
+    const toolEvent = {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      canvasX: coords.x,
+      canvasY: coords.y,
+      shiftKey: event.shiftKey,
+      ctrlKey: (event.ctrlKey || event.metaKey),
+      originalEvent: event
+    };
+
     if (this.currentTool) {
-      this.currentTool.onPointerMove({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+      this.currentTool.onPointerMove(toolEvent, this);
     }
   }
 
@@ -510,8 +535,20 @@ export class CanvasEngineController {
     this.state.isPanning = false;
     this.state.isDrawing = false;
     const coords = this.screenToCanvasCoords(event.clientX, event.clientY);
+
+    const toolEvent = {
+      button: event.button,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      canvasX: coords.x,
+      canvasY: coords.y,
+      shiftKey: event.shiftKey,
+      ctrlKey: (event.ctrlKey || event.metaKey),
+      originalEvent: event
+    };
+
     if (this.currentTool) {
-      this.currentTool.onPointerUp({ ...event, canvasX: coords.x, canvasY: coords.y }, this);
+      this.currentTool.onPointerUp(toolEvent, this);
     }
   }
 
@@ -694,7 +731,7 @@ export class CanvasEngineController {
       this.ctx.strokeStyle = '#2563EB';
       this.ctx.lineWidth = 1 / this.state.zoom;
       this.ctx.setLineDash([5, 5]);
-      this.ctx.strokeRect(obj.bounds.x - 4, obj.bounds.y - 4, obj.bounds.w + 8, obj.bounds.h + 8);
+      this.ctx.strokeRect(obj.bounds.x - 4, obj.bounds.y - 4, obj.bounds.width + 8, obj.bounds.height + 8);
       this.ctx.restore();
     }
 
@@ -789,7 +826,10 @@ export class CanvasEngineController {
           return;
         }
       }
-      this.setTool('select');
+      // Only reset to select if we are NOT typing or already in text mode
+      if (!this.state.isTyping && this.state.activeTool !== 'text') {
+        this.setTool('select');
+      }
     });
   }
 

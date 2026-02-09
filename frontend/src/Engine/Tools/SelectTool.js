@@ -204,9 +204,21 @@ export class SelectTool extends BaseTool {
   }
 
   _move(obj, geo, dx, dy) {
-    if (geo.points) geo.points = geo.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
-    else if (geo.cx !== undefined) { geo.cx += dx; geo.cy += dy; }
-    else { geo.x += dx; geo.y += dy; if (geo.x1 !== undefined) { geo.x1 += dx; geo.y1 += dy; geo.x2 += dx; geo.y2 += dy; } }
+    if (geo.points) {
+      geo.points = geo.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+    } else if (geo.cx !== undefined) {
+      geo.cx += dx;
+      geo.cy += dy;
+    } else {
+      if (geo.x !== undefined) geo.x += dx;
+      if (geo.y !== undefined) geo.y += dy;
+      if (geo.x1 !== undefined) {
+        geo.x1 += dx;
+        geo.y1 += dy;
+        geo.x2 += dx;
+        geo.y2 += dy;
+      }
+    }
   }
 
   _resize(obj, geo, dx, dy) {
