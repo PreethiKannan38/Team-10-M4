@@ -14,11 +14,14 @@ import HistoryManager, { RemoveObjectCommand } from './managers/HistoryManager';
 import { CoordinateMapper } from './utils/CoordinateMapper';
 import { BoundsCalculation } from './utils/BoundsCalculation';
 import ToolManager from './ToolManager';
+import axios from 'axios';
 
 export class CanvasEngineController {
   constructor(canvas, container, roomId = 'drawing-room', userRole = 'viewer') {
     this.canvas = canvas;
     this.container = container;
+    this.currentRoomId = roomId;
+    this.snapshotDebounceTimeout = null;
     this.ctx = canvas.getContext('2d');
 
     // === YJS INITIALIZATION ===
@@ -149,6 +152,7 @@ export class CanvasEngineController {
         this._saveTimeout = setTimeout(() => {
           window.dispatchEvent(new Event('save-end'));
         }, 1000); // Slightly longer than backend debounce
+        this.triggerSnapshotSave();
       }
     });
 
@@ -877,6 +881,94 @@ export class CanvasEngineController {
 
   dispatchStateChange(key, value) {
     window.dispatchEvent(new CustomEvent('engineStateChange', { detail: { key, value } }));
+  }
+
+  triggerSnapshotSave() {
+    if (this.snapshotDebounceTimeout) clearTimeout(this.snapshotDebounceTimeout);
+    this.snapshotDebounceTimeout = setTimeout(() => {
+      // Extract ID from URL or passed in constructor? 
+      // The constructor doesn't take ID, but we can assume it's in the URL or we need to pass it.
+      // Actually, the roomID is passed. Usually roomId IS the canvasId.
+      // cleanDocName logic in server suggests roomId == canvasId.
+      this.saveSnapshot(this.currentRoomId);
+    }, 5000); // Save snapshot every 5 seconds of inactivity
+  }
+
+  async saveSnapshot(canvasId) {
+    if (!this.canvas) return;
+
+    const snapshotCanvas = document.createElement('canvas');
+    const scale = 0.5;
+    snapshotCanvas.width = this.canvas.width * scale;
+    snapshotCanvas.height = this.canvas.height * scale;
+    const ctx = snapshotCanvas.getContext('2d');
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, snapshotCanvas.width, snapshotCanvas.height);
+    ctx.drawImage(this.canvas, 0, 0, snapshotCanvas.width, snapshotCanvas.height);
+
+    const base64 = snapshotCanvas.toDataURL('image/jpeg', 0.6);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/canvas/${canvasId}/snapshot`,
+        { snapshot: base64 },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log('[Engine] Snapshot saved');
+    } catch (err) {
+      // Silent fail to not annoy user
+      console.warn('[Engine] Failed to save snapshot', err);
+    }
+  }
+
+  async restore(canvasId) {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/canvas/${canvasId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const savedState = res.data.documentState;
+      if (!savedState) {
+        console.warn('[Engine] No saved state to restore.');
+        return;
+      }
+
+      const binaryString = window.atob(savedState);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const tempDoc = new Y.Doc();
+      Y.applyUpdate(tempDoc, bytes);
+
+      const tempObjects = tempDoc.getMap('objects').toJSON();
+      const tempLayers = tempDoc.getArray('layers').toJSON();
+
+      this.doc.transact(() => {
+        this.yObjects.clear();
+        this.yLayers.delete(0, this.yLayers.length);
+        // Re-insert objects
+        Object.entries(tempObjects).forEach(([key, val]) => {
+          this.yObjects.set(key, val);
+        });
+        // Re-insert layers
+        this.yLayers.insert(0, tempLayers);
+      });
+
+      console.log('[Engine] Canvas restored.');
+      this.syncFromYjs();
+
+    } catch (err) {
+      console.error('[Engine] Restore failed:', err);
+    }
   }
 
   destroy() {
