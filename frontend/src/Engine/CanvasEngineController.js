@@ -360,9 +360,9 @@ export class CanvasEngineController {
     return this.yObjects.get(id);
   }
 
-  exportToImage() {
+  exportToImage(format = 'png') {
     const link = document.createElement('a');
-    link.download = `drawspace-${Date.now()}.png`;
+    link.download = `drawspace-${Date.now()}.${format}`;
     link.href = this.canvas.toDataURL('image/png');
     link.click();
   }
