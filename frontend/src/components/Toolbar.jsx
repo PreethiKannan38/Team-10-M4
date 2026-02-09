@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Pencil, MousePointer2, Eraser, Square, Circle, Type, PaintBucket, Move, PenTool, Triangle, Hexagon,
-  Undo2, Redo2, Trash2, Download, Brush
+  Undo2, Redo2, Trash2, Download, Brush, Star, Minus, ArrowRight
 } from 'lucide-react'
 
 const toolGroups = [
@@ -37,7 +37,10 @@ const toolGroups = [
       { id: 'rectangle', icon: Square, name: 'Rectangle Tool' },
       { id: 'circle', icon: Circle, name: 'Circle Tool' },
       { id: 'triangle', icon: Triangle, name: 'Triangle Tool' },
-      { id: 'polygon', icon: Hexagon, name: 'Polygon Tool' }
+      { id: 'polygon', icon: Hexagon, name: 'Polygon Tool' },
+      { id: 'star', icon: Star, name: 'Star Tool' },
+      { id: 'line', icon: Minus, name: 'Line Tool' },
+      { id: 'arrow', icon: ArrowRight, name: 'Arrow Tool' }
     ]
   },
   {

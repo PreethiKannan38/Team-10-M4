@@ -8,7 +8,7 @@
 import { DrawTool } from './Tools/DrawTool';
 import { EraserTool } from './Tools/EraserTool';
 import { SelectTool } from './Tools/SelectTool';
-import { LineTool, RectangleTool, CircleTool, TriangleTool, ArrowTool, PolygonTool } from './Tools/ShapeTools';
+import { LineTool, RectangleTool, CircleTool, TriangleTool, ArrowTool, PolygonTool, StarTool } from './Tools/ShapeTools';
 import { TextTool } from './Tools/TextTool';
 import { FillTool } from './Tools/FillTool';
 import { EyedropperTool } from './Tools/EyedropperTool';
@@ -34,6 +34,7 @@ export class ToolManager {
       text: TextTool,
       fill: FillTool,
       eyedropper: EyedropperTool,
+      star: StarTool,
     };
   }
 

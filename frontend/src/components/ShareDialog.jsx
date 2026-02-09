@@ -29,7 +29,7 @@ const ShareDialog = ({ isOpen, onClose, canvasId, owner, members, onUpdate }) =>
         setLoading(true);
 
         try {
-            await axios.post(`http://localhost:5001/api/canvas/${canvasId}/invite`,
+            await axios.post(`/api/canvas/${canvasId}/invite`,
                 { email: identifier, role },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -47,7 +47,7 @@ const ShareDialog = ({ isOpen, onClose, canvasId, owner, members, onUpdate }) =>
         if (!window.confirm('Remove this collaborator?')) return;
         setLoading(true);
         try {
-            await axios.delete(`http://localhost:5001/api/canvas/${canvasId}/members/${userId}`, {
+            await axios.delete(`/api/canvas/${canvasId}/members/${userId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setSuccess('Collaborator removed');

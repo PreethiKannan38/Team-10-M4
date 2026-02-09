@@ -18,6 +18,7 @@ import { setupWSConnection, setPersistence } from 'y-websocket/bin/utils';
 import Canvas from './models/Canvas.js';
 import authRoutes from './routes/authRoutes.js';
 import canvasRoutes from './routes/canvasRoutes.js';
+import _ from 'lodash';
 import snapshotRoutes from './routes/snapshotRoutes.js';
 
 const app = express();
@@ -33,8 +34,11 @@ app.use('/api/canvas', canvasRoutes);
 app.use('/api/snapshots', snapshotRoutes);
 
 // MongoDB Connection
-const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/Canvas';
-mongoose.connect(mongoURI)
+const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/Canvas';
+mongoose.connect(mongoURI, {
+  serverSelectionTimeoutMS: 5000,
+  connectTimeoutMS: 10000,
+})
   .then(async () => {
     console.log(`MongoDB Connected: ${mongoURI}`);
     console.log(`Database Name: ${mongoose.connection.name}`);
@@ -50,8 +54,23 @@ mongoose.connect(mongoURI)
   .catch(err => console.error('MongoDB Connection Error:', err));
 
 // Health Endpoint
-app.get('/', (req, res) => {
+app.get('/health', (req, res) => {
   res.send('Backend is alive');
+});
+
+// Serve static files from the frontend app
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 // ----------------------------------------------------
@@ -102,36 +121,35 @@ setPersistence({
 
     // CRITICAL: Prevent overwrite if we are still loading the initial state
     if (docsLoading.has(cleanDocName)) {
-      console.log(`[Yjs] [Lock] SKIPPING SAVE for ${cleanDocName} - Load still in progress.`);
       return;
     }
 
-    try {
-      const update = Y.encodeStateAsUpdate(doc);
+    // Debounce factory for each document
+    if (!global.saveDebouncers) global.saveDebouncers = new Map();
 
-      if (update.length < 10) {
-        // Skip saving if it's just an empty/minimal update to avoid unnecessary DB calls
-        return;
-      }
-
-      console.log(`[Yjs] Saving state for "${cleanDocName}" (${update.length} bytes)`);
-      console.log(`[Yjs] Calling Canvas.findOneAndUpdate({ canvasId: "${cleanDocName}" }, { documentState: ... }, { upsert: true, new: true })`);
-      const result = await Canvas.findOneAndUpdate(
-        { canvasId: cleanDocName },
-        {
-          documentState: Buffer.from(update),
-        },
-        { upsert: true, new: true, timestamps: true }
-      );
-
-      if (result) {
-        console.log(`[Yjs] State saved for "${cleanDocName}". Last modified: ${result.updatedAt}`);
-      } else {
-        console.log(`[Yjs] WARNING: Failed to save state for "${cleanDocName}"`);
-      }
-    } catch (err) {
-      console.error(`[Yjs] Error saving document ${docName}:`, err);
+    if (!global.saveDebouncers.has(cleanDocName)) {
+      const debouncedSave = _.debounce(async (serializedState) => {
+        try {
+          console.log(`[Yjs] Saving state for "${cleanDocName}" (${serializedState.length} bytes)`);
+          await Canvas.findOneAndUpdate(
+            { canvasId: cleanDocName },
+            { documentState: Buffer.from(serializedState) },
+            { upsert: true, new: true, timestamps: true }
+          );
+          console.log(`[Yjs] State saved for "${cleanDocName}"`);
+        } catch (err) {
+          console.error(`[Yjs] Error saving document ${cleanDocName}:`, err);
+        }
+      }, 800); // 800ms debounce
+      global.saveDebouncers.set(cleanDocName, debouncedSave);
     }
+
+    // Capture state immediately, but debounce the DB write
+    const update = Y.encodeStateAsUpdate(doc);
+    if (update.length < 10) return;
+
+    const saver = global.saveDebouncers.get(cleanDocName);
+    saver(update);
   }
 });
 

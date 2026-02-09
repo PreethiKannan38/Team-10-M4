@@ -23,7 +23,8 @@ export class CanvasEngineController {
 
     // === YJS INITIALIZATION ===
     this.doc = new Y.Doc();
-    this.provider = new WebsocketProvider('ws://localhost:5001', roomId, this.doc);
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    this.provider = new WebsocketProvider(`${wsProtocol}//${window.location.host}`, roomId, this.doc);
 
     this.provider.on('status', event => {
       console.log('Yjs WebSocket Status:', event.status);
@@ -139,11 +140,27 @@ export class CanvasEngineController {
   }
 
   setupYjsListeners() {
-    this.yObjects.observe(() => {
+    this.yObjects.observe((event) => {
       this.syncFromYjs();
+      if (event.transaction.local) {
+        window.dispatchEvent(new Event('save-start'));
+        // Debounce the save-end event
+        if (this._saveTimeout) clearTimeout(this._saveTimeout);
+        this._saveTimeout = setTimeout(() => {
+          window.dispatchEvent(new Event('save-end'));
+        }, 1000); // Slightly longer than backend debounce
+      }
     });
-    this.yLayers.observe(() => {
+
+    this.yLayers.observe((event) => {
       this.syncFromYjs();
+      if (event.transaction.local) {
+        window.dispatchEvent(new Event('save-start'));
+        if (this._saveTimeout) clearTimeout(this._saveTimeout);
+        this._saveTimeout = setTimeout(() => {
+          window.dispatchEvent(new Event('save-end'));
+        }, 1000);
+      }
     });
   }
 
@@ -399,6 +416,8 @@ export class CanvasEngineController {
       case 'circle': return BoundsCalculation.circleBounds(geometry.cx, geometry.cy, geometry.radius, sw);
       case 'triangle': return BoundsCalculation.strokeBounds(geometry.points, sw);
       case 'polygon': return BoundsCalculation.strokeBounds(geometry.points, sw);
+      case 'star': return BoundsCalculation.circleBounds(geometry.cx, geometry.cy, geometry.outerRadius, sw);
+
       case 'text': return { x: geometry.x, y: geometry.y, width: geometry.width || 200, height: geometry.height || 100 };
       default: return null;
     }
@@ -665,6 +684,9 @@ export class CanvasEngineController {
       this._finalizeShape(style);
     } else if (type === 'triangle') {
       this._renderPolygon(geometry.points);
+      this._finalizeShape(style);
+    } else if (type === 'star') {
+      this._renderStar(geometry.cx, geometry.cy, geometry.outerRadius, geometry.innerRadius, geometry.points, this.ctx);
       this._finalizeShape(style);
     } else if (type === 'polygon') {
       this._renderPolygon(geometry.points);

@@ -150,3 +150,32 @@ export class PolygonTool extends BaseTool {
     ctx.closePath(); ctx.stroke();
   }
 }
+
+export class StarTool extends BaseTool {
+  constructor(engine) { super(engine); this.start = null; this.end = null; this.points = 5; this.innerRadiusRatio = 0.5; }
+  onPointerDown(ev) {
+    this.start = { x: ev.canvasX, y: ev.canvasY };
+    this.end = { x: ev.canvasX, y: ev.canvasY };
+  }
+  onPointerMove(ev) { if (this.start) this.end = { x: ev.canvasX, y: ev.canvasY }; }
+  onPointerUp(ev, engine) {
+    if (!this.start || !this.end) return;
+    const outerRadius = Math.sqrt((this.end.x - this.start.x) ** 2 + (this.end.y - this.start.y) ** 2);
+    if (outerRadius < 1) { this.start = null; this.end = null; return; }
+
+    engine.executeCommand(new AddObjectCommand(engine, {
+      type: 'star',
+      geometry: { cx: this.start.x, cy: this.start.y, outerRadius, innerRadius: outerRadius * this.innerRadiusRatio, points: this.points },
+      style: { ...engine.state.brushOptions, fillColor: engine.state.fillEnabled ? engine.state.brushOptions.color : 'transparent' }
+    }));
+    this.start = null; this.end = null;
+  }
+  renderPreview(ctx, engine) {
+    if (!this.start || !this.end) return;
+    const outerRadius = Math.sqrt((this.end.x - this.start.x) ** 2 + (this.end.y - this.start.y) ** 2);
+    if (outerRadius < 1) return;
+    ctx.strokeStyle = engine.state.brushOptions.color;
+    ctx.lineWidth = engine.state.brushOptions.width;
+    engine._renderStar(this.start.x, this.start.y, outerRadius, outerRadius * this.innerRadiusRatio, this.points, ctx);
+  }
+}

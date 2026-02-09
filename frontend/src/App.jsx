@@ -60,7 +60,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await axios.get(`http://localhost:5001/api/canvas/${canvasId}`, {
+      const res = await axios.get(`/api/canvas/${canvasId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCanvasMetadata(res.data);
@@ -72,6 +72,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
   // Compute User Role
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const getRole = () => {
+    if (canvasId.startsWith('temp-') || canvasId.startsWith('guest-')) return 'owner';
     if (!canvasMetadata) return 'viewer'; // Default until loaded
     const isOwner = canvasMetadata.owner?._id === currentUser._id || canvasMetadata.owner === currentUser._id;
     if (isOwner) return 'owner';
@@ -84,7 +85,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await axios.put(`http://localhost:5001/api/canvas/${canvasId}/name`,
+      const res = await axios.put(`/api/canvas/${canvasId}/name`,
         { name: newName },
         { headers: { Authorization: `Bearer ${token}` } }
       );

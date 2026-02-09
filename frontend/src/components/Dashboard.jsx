@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { 
-    Plus, Layout, Clock, User, ArrowRight, Trash2, LogOut, Search, 
-    Grid, List, Settings, Users, Star, Filter, SortAsc, SortDesc 
+import {
+    Plus, Layout, Clock, User, ArrowRight, Trash2, LogOut, Search,
+    Grid, List, Settings, Users, Star, Filter, SortAsc, SortDesc
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -15,7 +15,7 @@ const Dashboard = () => {
     const [sortBy, setSortBy] = useState('updatedAt'); // updatedAt, name
     const [sortOrder, setSortOrder] = useState('desc'); // asc, desc
     const [filterBy, setFilterBy] = useState('all'); // all, favorites
-    
+
     const navigate = useNavigate();
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -27,7 +27,7 @@ const Dashboard = () => {
     const fetchCanvases = async () => {
         try {
             setLoading(true);
-            const res = await axios.get('http://localhost:5001/api/canvas/my-canvases', {
+            const res = await axios.get('/api/canvas/my-canvases', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setCanvases(res.data);
@@ -119,21 +119,21 @@ const Dashboard = () => {
                 </div>
 
                 <div className="flex-1 py-8 px-4 space-y-2">
-                    <button 
+                    <button
                         onClick={() => setFilterBy('all')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filterBy === 'all' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                     >
                         <Layout size={20} />
                         <span className="hidden lg:block">All Canvases</span>
                     </button>
-                    <button 
+                    <button
                         onClick={() => setFilterBy('favorites')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filterBy === 'favorites' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                     >
                         <Star size={20} />
                         <span className="hidden lg:block">Favorites</span>
                     </button>
-                    <button 
+                    <button
                         onClick={() => navigate('/profile')}
                         className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl font-bold transition-all"
                     >
@@ -156,7 +156,7 @@ const Dashboard = () => {
                 </div>
 
                 <div className="p-4 border-t border-slate-100">
-                    <button 
+                    <button
                         onClick={() => { localStorage.clear(); navigate('/login'); }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl font-bold transition-all"
                     >
@@ -173,9 +173,9 @@ const Dashboard = () => {
                     <div className="flex items-center gap-8 flex-1 max-w-2xl">
                         <div className="relative w-full group">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={18} />
-                            <input 
-                                type="text" 
-                                placeholder="Search Workspaces..." 
+                            <input
+                                type="text"
+                                placeholder="Search Workspaces..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-slate-100 border-none rounded-2xl py-2.5 pl-12 pr-4 text-sm font-bold placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all"
@@ -185,7 +185,7 @@ const Dashboard = () => {
 
                     <div className="flex items-center gap-4 ml-8">
                         <div className="hidden md:flex items-center bg-slate-100 p-1 rounded-xl">
-                            <button 
+                            <button
                                 onClick={() => { setSortBy(sortBy === 'name' ? 'updatedAt' : 'name'); }}
                                 className="p-2 rounded-lg text-slate-400 hover:text-slate-600 transition-all flex items-center gap-2"
                                 title="Toggle Sort"
@@ -193,21 +193,21 @@ const Dashboard = () => {
                                 <Filter size={16} />
                                 <span className="text-[10px] font-black uppercase tracking-widest">{sortBy === 'name' ? 'Name' : 'Date Updated'}</span>
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                                 className="p-2 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
                             >
                                 {sortOrder === 'asc' ? <SortAsc size={16} /> : <SortDesc size={16} />}
                             </button>
                         </div>
-                        <button 
+                        <button
                             onClick={handleCreateCanvas}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-2xl font-black tracking-wide text-xs uppercase flex items-center gap-2 transition-all shadow-lg shadow-indigo-100 hover:-translate-y-0.5 active:scale-95 shrink-0"
                         >
                             <Plus size={18} strokeWidth={3} />
                             New Canvas
                         </button>
-                        <div 
+                        <div
                             onClick={() => navigate('/profile')}
                             className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md shrink-0 cursor-pointer hover:scale-110 transition-transform"
                         >
@@ -227,13 +227,13 @@ const Dashboard = () => {
                                 <p className="text-slate-500 font-medium">Manage and collaborate on your digital canvases.</p>
                             </div>
                             <div className="flex items-center bg-slate-100 p-1 rounded-xl">
-                                <button 
+                                <button
                                     onClick={() => setViewMode('grid')}
                                     className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
                                 >
                                     <Grid size={18} />
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setViewMode('list')}
                                     className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
                                 >
@@ -255,7 +255,7 @@ const Dashboard = () => {
                                 </div>
                                 <h3 className="text-xl font-bold text-slate-800 mb-2">No canvases found</h3>
                                 <p className="text-slate-400 mb-8 max-w-xs text-center">Create your first collaborative workspace to start designing with your team.</p>
-                                <button 
+                                <button
                                     onClick={handleCreateCanvas}
                                     className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold hover:bg-indigo-600 transition-all flex items-center gap-2"
                                 >
@@ -272,20 +272,20 @@ const Dashboard = () => {
                                         className={`group bg-white rounded-[2rem] border p-6 shadow-sm hover:shadow-2xl hover:shadow-indigo-100 transition-all duration-500 cursor-pointer flex flex-col justify-between h-64 relative overflow-hidden border-b-4 ${canvas.isFavorite ? 'border-amber-400 shadow-amber-50' : 'border-slate-100 hover:border-b-indigo-500'}`}
                                     >
                                         <div className="absolute top-4 right-4 z-10 flex gap-1">
-                                            <button 
+                                            <button
                                                 onClick={(e) => toggleFavorite(e, canvas.canvasId)}
                                                 className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${canvas.isFavorite ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-500 hover:bg-amber-50 opacity-0 group-hover:opacity-100'}`}
                                             >
                                                 <Star size={16} fill={canvas.isFavorite ? "currentColor" : "none"} />
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={(e) => handleDeleteCanvas(e, canvas.canvasId)}
                                                 className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
-                                        
+
                                         <div>
                                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform mb-6 ${canvas.isFavorite ? 'bg-amber-50 text-amber-500' : 'bg-indigo-50 text-indigo-500 group-hover:scale-110'}`}>
                                                 <Layout size={24} />

@@ -11,6 +11,26 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
   const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [saveStatus, setSaveStatus] = useState('Saved');
+
+  useEffect(() => {
+    const handleSaveStart = () => setSaveStatus('Saving...');
+    const handleSaveEnd = () => {
+      setTimeout(() => setSaveStatus('Saved'), 500);
+    };
+
+    // Listen for custom events dispatched by CanvasEngineController
+    window.addEventListener('save-start', handleSaveStart);
+    window.addEventListener('save-end', handleSaveEnd);
+
+    // Also listen for Yjs update events if we can emit them from Controller
+    // For now, we'll assume the controller emits these.
+
+    return () => {
+      window.removeEventListener('save-start', handleSaveStart);
+      window.removeEventListener('save-end', handleSaveEnd);
+    };
+  }, []);
 
   useEffect(() => {
     setNewName(canvasName || 'Untitled Canvas');
@@ -57,6 +77,9 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
           <span className="font-black text-lg text-slate-900 tracking-[-0.02em] ml-1">
             Design Deck
           </span>
+          <div className="ml-4 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            {saveStatus}
+          </div>
         </div>
 
         <div className="w-[1px] h-6 bg-slate-200" />

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { 
-    User, Mail, Lock, Shield, ChevronLeft, 
+import {
+    User, Mail, Lock, Shield, ChevronLeft,
     CheckCircle2, AlertCircle, Loader2, LogOut, Edit2, Save
 } from 'lucide-react';
 
@@ -60,15 +60,15 @@ const Profile = () => {
         setStatus({ type: '', message: '' });
 
         try {
-            const res = await axios.put('http://localhost:5001/api/auth/update-profile', 
-                { name: newName }, 
+            const res = await axios.put('/api/auth/update-profile',
+                { name: newName },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            
+
             // Update local storage
             const updatedUser = { ...user, name: res.data.name };
             localStorage.setItem('user', JSON.stringify(updatedUser));
-            
+
             setStatus({ type: 'success', message: 'Profile updated successfully!' });
             setIsEditingName(false);
         } catch (err) {
@@ -89,7 +89,7 @@ const Profile = () => {
         setLoading(true);
 
         try {
-            await axios.put('http://localhost:5001/api/auth/update-password', {
+            await axios.put('/api/auth/update-password', {
                 currentPassword: passwords.current,
                 newPassword: passwords.new
             }, {
@@ -107,7 +107,7 @@ const Profile = () => {
     return (
         <div className="min-h-screen bg-[#FAFAFC] text-slate-800 font-sans p-6 lg:p-12">
             <div className="max-w-4xl mx-auto">
-                <button 
+                <button
                     onClick={() => navigate('/dashboard')}
                     className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-colors font-bold text-sm uppercase tracking-widest mb-12 group"
                 >
@@ -122,11 +122,11 @@ const Profile = () => {
                             <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center text-white text-3xl font-black mb-6 shadow-2xl shadow-indigo-100 border-4 border-white">
                                 {user.name?.[0].toUpperCase()}
                             </div>
-                            
+
                             {isEditingName ? (
                                 <div className="flex flex-col gap-2 w-full mb-4">
-                                    <input 
-                                        type="text" 
+                                    <input
+                                        type="text"
                                         value={newName}
                                         onChange={(e) => setNewName(e.target.value)}
                                         className="w-full text-center bg-slate-50 border-2 border-indigo-100 rounded-xl py-2 px-4 font-bold outline-none focus:border-indigo-500 transition-all"
@@ -134,13 +134,13 @@ const Profile = () => {
                                         autoFocus
                                     />
                                     <div className="flex gap-2">
-                                        <button 
+                                        <button
                                             onClick={handleUpdateName}
                                             className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"
                                         >
                                             <Save size={14} /> Save Name
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => { setIsEditingName(false); setNewName(user.name); }}
                                             className="flex-1 bg-slate-100 text-slate-400 py-2 rounded-xl text-xs font-black uppercase tracking-widest"
                                         >
@@ -152,7 +152,7 @@ const Profile = () => {
                                 <div className="flex flex-col items-center mb-8 group">
                                     <div className="flex items-center gap-2">
                                         <h2 className="text-2xl font-black">{user.name}</h2>
-                                        <button 
+                                        <button
                                             onClick={() => setIsEditingName(true)}
                                             className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                                         >
@@ -162,8 +162,8 @@ const Profile = () => {
                                     <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">{user.email}</p>
                                 </div>
                             )}
-                            
-                            <button 
+
+                            <button
                                 onClick={() => { localStorage.clear(); window.location.href = '/'; }}
                                 className="w-full flex items-center justify-center gap-3 py-4 text-red-500 bg-red-50 hover:bg-red-100 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
                             >
@@ -204,8 +204,8 @@ const Profile = () => {
                             <form onSubmit={handleUpdatePassword} className="space-y-6">
                                 <div className="space-y-2">
                                     <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Current Password</label>
-                                    <input 
-                                        type="password" 
+                                    <input
+                                        type="password"
                                         name="current"
                                         required
                                         value={passwords.current}
@@ -218,8 +218,8 @@ const Profile = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">New Password</label>
-                                        <input 
-                                            type="password" 
+                                        <input
+                                            type="password"
                                             name="new"
                                             required
                                             minLength={6}
@@ -231,8 +231,8 @@ const Profile = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Confirm New Password</label>
-                                        <input 
-                                            type="password" 
+                                        <input
+                                            type="password"
                                             name="confirm"
                                             required
                                             value={passwords.confirm}
@@ -243,7 +243,7 @@ const Profile = () => {
                                     </div>
                                 </div>
 
-                                <button 
+                                <button
                                     type="submit"
                                     disabled={loading}
                                     className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98]"
