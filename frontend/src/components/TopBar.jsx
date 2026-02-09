@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User } from 'lucide-react';
+import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 
-export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange, userRole, onExport }) {
+export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange, userRole, onExport, onRestore }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const shareRef = useRef(null);
@@ -124,12 +124,21 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
 
       {/* Right: Actions & Profile */}
       <div className="flex items-center gap-3">
-        <div className="hidden lg:flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onRestore}
+            className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-indigo-600 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+            title="Revert to last saved state"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Restore</span>
+          </button>
+
           <button
             onClick={onClear}
             className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
           >
-            Clear Canvas
+            <span className="hidden md:inline">Clear Canvas</span>
           </button>
 
           <button className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
@@ -142,7 +151,7 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
               className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg shadow-indigo-100 transition-all active:scale-95"
             >
               <Share2 className="w-3.5 h-3.5" />
-              <span>Share canvas</span>
+              <span className="hidden md:inline">Share canvas</span>
             </button>
 
             <ShareDialog

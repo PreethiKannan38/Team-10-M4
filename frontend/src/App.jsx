@@ -152,6 +152,13 @@ function CanvasWorkspace({ canvasEngineRef }) {
     }
   };
 
+  const handleRestore = () => {
+    if (!canvasEngineRef.current) return;
+    if (window.confirm('Restore last saved version? This will discard any unsaved changes.')) {
+      canvasEngineRef.current.restore(canvasId);
+    }
+  };
+
   return (
     <div className="w-screen h-screen bg-[#FAFAFC] flex flex-col overflow-hidden font-sans text-slate-800 relative">
       {/* Dynamic Background */}
@@ -174,6 +181,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout}
           onExport={handleExport}
+          onRestore={handleRestore}
           userRole={userRole}
         />
       </div>

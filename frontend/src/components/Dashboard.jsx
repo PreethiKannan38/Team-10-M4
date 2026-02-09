@@ -53,7 +53,7 @@ const Dashboard = () => {
         }
 
         try {
-            const res = await axios.post('http://localhost:5001/api/canvas/create', { name: 'Untitled Canvas' }, {
+            const res = await axios.post('/api/canvas/create', { name: 'Untitled Canvas' }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             navigate(`/canvas/${res.data.canvasId}`);
@@ -68,7 +68,7 @@ const Dashboard = () => {
         e.stopPropagation();
         if (!window.confirm('Delete this workspace?')) return;
         try {
-            await axios.delete(`http://localhost:5001/api/canvas/${canvasId}`, {
+            await axios.delete(`/api/canvas/${canvasId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setCanvases(canvases.filter(c => c.canvasId !== canvasId));
@@ -80,7 +80,7 @@ const Dashboard = () => {
     const toggleFavorite = async (e, canvasId) => {
         e.stopPropagation();
         try {
-            const res = await axios.put(`http://localhost:5001/api/canvas/${canvasId}/favorite`, {}, {
+            const res = await axios.put(`/api/canvas/${canvasId}/favorite`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setCanvases(canvases.map(c => c.canvasId === canvasId ? res.data : c));
@@ -287,27 +287,32 @@ const Dashboard = () => {
                                         </div>
 
                                         <div>
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform mb-6 ${canvas.isFavorite ? 'bg-amber-50 text-amber-500' : 'bg-indigo-50 text-indigo-500 group-hover:scale-110'}`}>
-                                                <Layout size={24} />
-                                            </div>
+                                            {canvas.snapshot ? (
+                                                <div className="w-full h-32 mb-4 rounded-xl overflow-hidden bg-slate-50 border border-slate-100">
+                                                    <img src={canvas.snapshot} alt="Preview" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                                                </div>
+                                            ) : (
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform mb-6 ${canvas.isFavorite ? 'bg-amber-50 text-amber-500' : 'bg-indigo-50 text-indigo-500 group-hover:scale-110'}`}>
+                                                    <Layout size={24} />
+                                                </div>
+                                            )}
                                             <h3 className="text-lg font-black text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors truncate pr-16">{canvas.name}</h3>
                                             <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest">
                                                 <Clock size={12} />
                                                 <span>{new Date(canvas.updatedAt).toLocaleDateString()}</span>
                                             </div>
-                                        </div>
-
-                                        <div className="pt-4 flex items-center justify-between border-t border-slate-50">
-                                            <div className="flex -space-x-2">
-                                                <div className="w-7 h-7 rounded-lg bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600">
-                                                    {user.name?.[0].toUpperCase()}
+                                            <div className="pt-4 flex items-center justify-between border-t border-slate-50">
+                                                <div className="flex -space-x-2">
+                                                    <div className="w-7 h-7 rounded-lg bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600">
+                                                        {user.name?.[0].toUpperCase()}
+                                                    </div>
+                                                    <div className="w-7 h-7 rounded-lg bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-400">
+                                                        +
+                                                    </div>
                                                 </div>
-                                                <div className="w-7 h-7 rounded-lg bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-400">
-                                                    +
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${canvas.isFavorite ? 'bg-amber-500 text-white' : 'bg-slate-50 group-hover:bg-indigo-600 group-hover:text-white'}`}>
+                                                    <ArrowRight size={16} />
                                                 </div>
-                                            </div>
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${canvas.isFavorite ? 'bg-amber-500 text-white' : 'bg-slate-50 group-hover:bg-indigo-600 group-hover:text-white'}`}>
-                                                <ArrowRight size={16} />
                                             </div>
                                         </div>
                                     </div>
