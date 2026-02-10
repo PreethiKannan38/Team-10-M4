@@ -129,6 +129,15 @@ function CanvasWorkspace({ canvasEngineRef }) {
     }
   };
 
+  const handlePreviewAction = (actionId, enabled) => {
+    if (!canvasEngineRef.current) return;
+    if (actionId === 'undo') {
+      canvasEngineRef.current.setUndoPreview(enabled);
+    } else if (actionId === 'redo') {
+      canvasEngineRef.current.setRedoPreview(enabled);
+    }
+  };
+
   useEffect(() => {
     const handleStateChange = (e) => {
       const { key, value } = e.detail;
@@ -165,6 +174,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout}
           userRole={userRole}
+          onExport={() => handleAction('export')}
         />
       </div>
 
@@ -183,7 +193,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
         )}
 
         <aside className={`absolute top-0 bottom-0 left-0 z-40 px-6 py-8 flex items-center transition-all duration-500 ease-spring ${isToolbarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-150px] opacity-0 pointer-events-none'}`}>
-          <Toolbar activeTool={activeTool} onToolChange={setActiveTool} onAction={handleAction} userRole={userRole} />
+          <Toolbar activeTool={activeTool} onToolChange={setActiveTool} onAction={handleAction} onPreviewAction={handlePreviewAction} userRole={userRole} />
         </aside>
 
         <main className="flex-1 relative flex items-center justify-center">

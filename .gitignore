@@ -31,7 +31,3 @@ frontend/.vite
 *.njsproj
 *.sln
 *.sw?
-
-# Project Documentation (Ignored as requested)
-ARCHITECTURE.md
-TECHNICAL_GUIDE.md

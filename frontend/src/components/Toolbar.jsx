@@ -72,7 +72,7 @@ const toolGroups = [
   }
 ]
 
-export default function Toolbar({ activeTool, onToolChange, onAction, userRole }) {
+export default function Toolbar({ activeTool, onToolChange, onAction, onPreviewAction, userRole }) {
   const [openPopup, setOpenPopup] = useState(null)
   const [hoveredTool, setHoveredTool] = useState(null)
 
@@ -207,8 +207,14 @@ export default function Toolbar({ activeTool, onToolChange, onAction, userRole }
                     <div key={tool.id} className="relative group/tooltip">
                       <button
                         onClick={() => handleToolClick(tool)}
-                        onMouseEnter={() => setHoveredTool(tool.name)}
-                        onMouseLeave={() => setHoveredTool(null)}
+                        onMouseEnter={() => {
+                          setHoveredTool(tool.name);
+                          if (tool.id === 'undo' || tool.id === 'redo') onPreviewAction?.(tool.id, true);
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredTool(null);
+                          if (tool.id === 'undo' || tool.id === 'redo') onPreviewAction?.(tool.id, false);
+                        }}
                         className={`w-12 h-12 rounded-2xl
                                    flex items-center justify-center
                                    transition-all active:scale-90

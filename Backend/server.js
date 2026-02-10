@@ -13,8 +13,11 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import * as Y from 'yjs';
-import { setupWSConnection, setPersistence } from 'y-websocket/bin/utils';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
+const Y = require('yjs');
+const { setupWSConnection, setPersistence } = require('y-websocket/bin/utils');
 import Canvas from './models/Canvas.js';
 import authRoutes from './routes/authRoutes.js';
 import canvasRoutes from './routes/canvasRoutes.js';

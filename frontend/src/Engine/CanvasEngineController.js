@@ -61,9 +61,10 @@ export class CanvasEngineController {
       activeLayerId: null,
       fillEnabled: false,
       eraserStrength: 100, // Default to 100% (Full delete)
-      eraserStrength: 100, // Default to 100% (Full delete)
       gridOpacity: 0.15,
       userRole: userRole,
+      undoPreview: false,
+      redoPreview: false,
     };
 
     // === MANAGER INITIALIZATION ===
@@ -445,6 +446,16 @@ export class CanvasEngineController {
     this.render();
   }
 
+  setUndoPreview(enabled) {
+    this.state.undoPreview = enabled;
+    this.render();
+  }
+
+  setRedoPreview(enabled) {
+    this.state.redoPreview = enabled;
+    this.render();
+  }
+
   /**
    * Set zoom level centered on a specific point
    */
@@ -592,6 +603,13 @@ export class CanvasEngineController {
     // Render Remote Selections
     this.renderRemoteSelections();
 
+    if (this.state.undoPreview) {
+      this._renderPreview('undo');
+    }
+    if (this.state.redoPreview) {
+      this._renderPreview('redo');
+    }
+
     this.ctx.restore();
   }
 
@@ -686,6 +704,22 @@ export class CanvasEngineController {
     this.ctx.lineJoin = 'round';
     this.ctx.fillStyle = style?.fillColor || 'transparent';
 
+    this.ctx.save();
+    if (geometry.rotation) {
+      const centerX = geometry.x !== undefined ? geometry.x + (geometry.width / 2) :
+        (geometry.cx !== undefined ? geometry.cx :
+          (geometry.x1 !== undefined ? (geometry.x1 + geometry.x2) / 2 :
+            (obj.bounds ? obj.bounds.x + obj.bounds.width / 2 : 0)));
+      const centerY = geometry.y !== undefined ? geometry.y + (geometry.height / 2) :
+        (geometry.cy !== undefined ? geometry.cy :
+          (geometry.y1 !== undefined ? (geometry.y1 + geometry.y2) / 2 :
+            (obj.bounds ? obj.bounds.y + obj.bounds.height / 2 : 0)));
+
+      this.ctx.translate(centerX, centerY);
+      this.ctx.rotate(geometry.rotation);
+      this.ctx.translate(-centerX, -centerY);
+    }
+
     this.ctx.beginPath();
     if (type === 'stroke' && geometry.points) {
       this.ctx.moveTo(geometry.points[0].x, geometry.points[0].y);
@@ -726,6 +760,7 @@ export class CanvasEngineController {
     }
 
     // Draw a bounding box for selected items for extra clarity
+    // MOVED INSIDE rotation context so it rotates with the object
     if (isSelected && obj.bounds) {
       this.ctx.save();
       this.ctx.strokeStyle = '#2563EB';
@@ -735,7 +770,33 @@ export class CanvasEngineController {
       this.ctx.restore();
     }
 
-    this.ctx.globalAlpha = 1.0;
+    this.ctx.restore();
+  }
+
+  _renderPreview(type) {
+    const cmd = type === 'undo' ? this.historyManager.peekUndo() : this.historyManager.peekRedo();
+    if (!cmd || !cmd.getAffectedObjectIds) return;
+
+    const affectedIds = cmd.getAffectedObjectIds();
+    if (affectedIds.length === 0) return;
+
+    this.ctx.save();
+    this.ctx.strokeStyle = type === 'undo' ? '#EF4444' : '#3B82F6'; // Red-500 for undo, Blue-500 for redo
+    this.ctx.lineWidth = 4 / this.state.zoom;
+    this.ctx.setLineDash([8, 8]);
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
+
+    affectedIds.forEach(id => {
+      const obj = this.getObject(id);
+      if (obj && obj.bounds) {
+        const b = obj.bounds;
+        // Highlight slightly larger than the object
+        this.ctx.strokeRect(b.x - 6, b.y - 6, b.width + 12, b.height + 12);
+      }
+    });
+
+    this.ctx.restore();
   }
 
   _renderWrappedText(text, x, y, maxWidth, lineHeight) {

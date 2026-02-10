@@ -3,7 +3,7 @@ import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User } 
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 
-export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange, userRole }) {
+export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange, userRole, onExport }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const shareRef = useRef(null);
@@ -124,7 +124,11 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
             />
           </div>
 
-          <button className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 ml-1">
+          <button
+            onClick={onExport}
+            className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 ml-1"
+            title="Download as PNG"
+          >
             <Download className="w-4 h-4" />
           </button>
         </div>
