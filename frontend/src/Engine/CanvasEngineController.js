@@ -397,6 +397,69 @@ export class CanvasEngineController {
     link.click();
   }
 
+  importFromJSON(jsonData) {
+    if (!this.canEdit()) return;
+
+    try {
+      if (!jsonData || !jsonData.objects || !jsonData.layers) {
+        throw new Error('Invalid JSON format');
+      }
+
+      this.doc.transact(() => {
+        // 1. Clear existing state
+        this.yObjects.clear();
+        console.log('[Engine] Cleared objects');
+        const layersCount = this.yLayers.length;
+        if (layersCount > 0) {
+          this.yLayers.delete(0, layersCount);
+        }
+        console.log('[Engine] Cleared layers');
+
+        // 2. Restore layers
+        const layers = jsonData.layers;
+        if (Array.isArray(layers) && layers.length > 0) {
+          this.yLayers.insert(0, layers);
+        }
+
+        // 3. Restore objects
+        const objects = jsonData.objects;
+        for (const [key, value] of Object.entries(objects)) {
+          this.yObjects.set(key, value);
+        }
+
+        // 4. Set active layer to the first one if available
+        if (layers.length > 0) {
+          this.state.activeLayerId = layers[0].id;
+        } else {
+          this.createDefaultLayer();
+        }
+
+      });
+
+      // RESET VIEW
+      this.state.pan = { x: 0, y: 0 };
+      this.state.zoom = 1;
+
+      console.log('[Engine] Import transaction complete. Syncing...');
+
+      const importedLayerCount = jsonData.layers.length;
+      const importedObjectCount = Object.keys(jsonData.objects).length;
+      alert(`Import Successful!\nLayers: ${importedLayerCount}\nObjects: ${importedObjectCount}\nActive Layer: ${this.state.activeLayerId}`);
+      this.syncFromYjs();
+      this.render();
+
+      setTimeout(() => {
+        console.log('[Engine] Delayed sync check...');
+        this.syncFromYjs();
+        this.render();
+      }, 200);
+
+    } catch (e) {
+      console.error('[Engine] Import Failed:', e);
+      alert('Failed to import JSON: ' + e.message);
+    }
+  }
+
   removeObject(objectId) {
     if (!this.canEdit()) return;
     const obj = this.yObjects.get(objectId);
