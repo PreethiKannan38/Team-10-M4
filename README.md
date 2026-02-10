@@ -2,50 +2,43 @@
 
 A real-time collaborative digital canvas that allows multiple users to draw, brainstorm, and interact on a shared workspace using WebSockets and CRDT-based synchronization.
 
-## 🚀 New Features (v1.1)
+## Getting Started with DesignDeck Development
 
-- **Landing Page**: Modern, minimal entry point with a clear onboarding flow.
-- **Advanced Dashboard**:
-  - **Search Bar**: Quickly find your workspaces.
-  - **Delete Workspaces**: Full control for owners to manage their projects.
-  - **View Modes**: Toggle between Grid and List views for better organization.
-  - **Improved UI**: Beautiful cards with timestamps and collaborator indicators.
-- **Port Conflict Fix**: Moved backend to port `5001` to avoid macOS AirPlay issues.
-- **Local Setup**: Pre-configured for local MongoDB for easy development.
+### Environment Setup
 
-## 🛠️ Project Structure
+### 1. Prerequisites
+- **Node.js**: v18.x or higher
+- **MongoDB**: A running instance (local or MongoDB Atlas)
+- **NPM**: v9.x or higher
 
-- `frontend/` - React-based client application.
-- `Backend/` - Express server with WebSocket support and MongoDB persistence.
+### 2. Backend Setup
+1. Navigate to `/Backend`.
+2. run `npm install`.
+3. Create a `.env` file (copy from `.env.example`):
+   ```
+   PORT=5000
+   MONGO_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret
+   ```
+4. run `npm start` (or `npm run dev` if available) to start the Express server and Yjs WebSocket provider.
 
-## 📋 Prerequisites
+### 3. Frontend Setup
+1. Navigate to /frontend.
+2. run `npm install`.
+3. run `npm run dev`.
+4. Open `http://localhost:5173` in your browser.
 
-- **Node.js**: Installed on your system.
-- **MongoDB**: Ensure MongoDB is running locally on `mongodb://localhost:27017`.
+### Tech Stack
+- **Frontend**: React, Vite, HTML5 Canvas API.
+- **Backend**: Node.js, Express, MongoDB (Mongoose).
+- **Real-time**: Yjs, y-websocket.
+- **Styling**: Vanilla CSS with modern design tokens.
+- **State/Auth**: JWT, LocalStorage.
 
-## ⚙️ Setup & Execution
-
-### 1. Backend Setup
-
-The backend is configured to run on port **5001**.
-
-```bash
-cd Backend
-npm install
-npm start
+### Repository Structure
+```text
+/Backend        --> Express server, WebSocket logic, DB models
+/frontend       --> React application
+  /src/Engine   --> Custom Canvas drawing engine
+  /src/components -> UI components (Toolbar, Canvas, etc.)
 ```
-
-### 2. Frontend Setup
-
-The frontend is configured to communicate with the backend at `http://localhost:5001`.
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## 💡 Troubleshooting
-
-- **Login/Registration**: Ensure the **Backend is running** in a separate terminal and your local MongoDB service is active.
-- **Environment**: The `.env` file is included in the repository for immediate use.
