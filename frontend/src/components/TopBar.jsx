@@ -3,7 +3,7 @@ import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, R
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 
-export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange, userRole, onExport, onRestore }) {
+export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange, userRole, onExport, onImport, onRestore }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const shareRef = useRef(null);
@@ -193,11 +193,45 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
                 </button>
                 <button
                   onClick={() => { onExport('json'); setExportOpen(false); }}
-                  className="w-full text-left px-4 py-2 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                  className="w-full text-left px-4 py-2 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center gap-2 border-b border-slate-50"
                 >
                   <span className="w-8">JSON</span>
                   <span className="text-xs font-normal text-slate-400">Project Data</span>
                 </button>
+
+                <div className="px-4 py-2 border-b border-slate-50 mt-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Import</p>
+                </div>
+                <label className="w-full text-left px-4 py-2 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center gap-2 cursor-pointer">
+                  <span className="w-8">JSON</span>
+                  <span className="text-xs font-normal text-slate-400">Upload Project</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          try {
+                            const json = JSON.parse(ev.target.result);
+                            if (onImport) {
+                              onImport(json);
+                            } else {
+                              console.error('onImport prop missing');
+                            }
+                          } catch (err) {
+                            console.error('Invalid JSON file', err);
+                            alert('Invalid JSON file');
+                          }
+                        };
+                        reader.readAsText(file);
+                      }
+                      setExportOpen(false);
+                    }}
+                  />
+                </label>
               </div>
             )}
           </div>
