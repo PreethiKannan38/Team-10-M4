@@ -159,6 +159,13 @@ function CanvasWorkspace({ canvasEngineRef }) {
     }
   };
 
+  const handleImport = (jsonData) => {
+    if (!canvasEngineRef.current) return;
+    if (window.confirm('Importing a new file will overwrite the current canvas. Continue?')) {
+      canvasEngineRef.current.importFromJSON(jsonData);
+    }
+  };
+
   return (
     <div className="w-screen h-screen bg-[#FAFAFC] flex flex-col overflow-hidden font-sans text-slate-800 relative">
       {/* Dynamic Background */}
