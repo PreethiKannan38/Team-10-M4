@@ -1,12 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User } from 'lucide-react';
+import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 
-export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasName, onNameChange, userRole, onExport }) {
+export default function TopBar({
+  canvas,
+  onClear,
+  onDashboard,
+  onLogout,
+  canvasName,
+  onNameChange,
+  userRole,
+  onExport,
+  branches = [],
+  onBranch
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [branchMenuOpen, setBranchMenuOpen] = useState(false);
   const shareRef = useRef(null);
+  const branchRef = useRef(null);
   const [newName, setNewName] = useState(canvasName || 'Untitled Canvas');
   const navigate = useNavigate();
 
@@ -16,21 +29,27 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
     setNewName(canvasName || 'Untitled Canvas');
   }, [canvasName]);
 
-  // Close share popup on outside click
+  // Close popups on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (shareRef.current && !shareRef.current.contains(e.target)) {
         setShareOpen(false);
+      }
+      if (branchRef.current && !branchRef.current.contains(e.target)) {
+        setBranchMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Close share popup on Escape
+  // Close popups on Escape
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape') setShareOpen(false);
+      if (e.key === 'Escape') {
+        setShareOpen(false);
+        setBranchMenuOpen(false);
+      }
     };
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
@@ -61,33 +80,87 @@ export default function TopBar({ canvas, onClear, onDashboard, onLogout, canvasN
 
         <div className="w-[1px] h-6 bg-slate-200" />
 
-        <div className="flex items-center gap-2 group">
-          {isEditing ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
-                className="bg-slate-50 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-              <button
-                onClick={handleNameSubmit}
-                className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100"
-              >
-                <Check size={14} />
-              </button>
-            </div>
-          ) : (
-            <div
-              className={`flex items-center gap-2 ${userRole !== 'viewer' ? 'cursor-pointer' : 'cursor-default'}`}
-              onClick={() => userRole !== 'viewer' && setIsEditing(true)}
+        <div className="flex items-center gap-4">
+          {/* Branch Switcher */}
+          <div className="relative" ref={branchRef}>
+            <button
+              onClick={() => setBranchMenuOpen(!branchMenuOpen)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all group"
             >
-              <h1 className="text-sm font-bold text-slate-800 tracking-tight">{canvasName || 'Untitled Canvas'}</h1>
-              {userRole !== 'viewer' && <Edit2 size={12} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />}
-            </div>
-          )}
+              <GitBranch size={14} className="group-hover:text-indigo-600" />
+              <span className="text-xs font-bold truncate max-w-[120px]">
+                {canvasName || 'Main'}
+              </span>
+              <ChevronDown size={14} className={`transition-transform duration-200 ${branchMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {branchMenuOpen && (
+              <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="p-2 max-h-64 overflow-y-auto">
+                  <p className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Branches</p>
+                  {branches.map((b) => (
+                    <button
+                      key={b.canvasId}
+                      onClick={() => {
+                        if (b.canvasId !== canvas?.canvasId) {
+                          navigate(`/canvas/${b.canvasId}`);
+                        }
+                        setBranchMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${b.canvasId === canvas?.canvasId ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <GitBranch size={14} className={b.canvasId === canvas?.canvasId ? 'text-indigo-600' : 'text-slate-400'} />
+                        <span className="text-xs font-bold truncate">{b.name}</span>
+                      </div>
+                      {b.canvasId === canvas?.canvasId && <Check size={14} />}
+                    </button>
+                  ))}
+                </div>
+                <div className="p-2 border-t border-slate-50 bg-slate-50/50">
+                  <button
+                    onClick={() => {
+                      onBranch();
+                      setBranchMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2 bg-white hover:bg-indigo-600 hover:text-white text-indigo-600 border border-indigo-100 rounded-xl text-xs font-bold transition-all shadow-sm"
+                  >
+                    <Plus size={14} />
+                    Create New Branch
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 group">
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
+                  className="bg-slate-50 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+                <button
+                  onClick={handleNameSubmit}
+                  className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100"
+                >
+                  <Check size={14} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className={`flex items-center gap-2 ${userRole !== 'viewer' ? 'cursor-pointer' : 'cursor-default'}`}
+                onClick={() => userRole !== 'viewer' && setIsEditing(true)}
+              >
+                <h1 className="text-sm font-bold text-slate-800 tracking-tight">{canvasName || 'Untitled Canvas'}</h1>
+                {userRole !== 'viewer' && <Edit2 size={12} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

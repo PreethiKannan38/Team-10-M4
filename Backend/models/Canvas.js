@@ -34,6 +34,13 @@ const canvasSchema = new mongoose.Schema({
     isFavorite: {
         type: Boolean,
         default: false,
+    },
+    groupId: {
+        type: String,
+        index: true,
+    },
+    parentId: {
+        type: String,
     }
 }, { timestamps: true });
 

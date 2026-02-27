@@ -15,6 +15,7 @@ export const createCanvas = async (req, res) => {
             canvasId,
             name: name || 'Untitled Canvas',
             owner: req.user._id,
+            groupId: canvasId, // Root of a new family
         });
 
         res.status(201).json(canvas);
@@ -226,4 +227,67 @@ export const removeMember = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
+};
+
+// @desc    Branch a canvas
+// @route   POST /api/canvas/:id/branch
+// @access  Private
+export const branchCanvas = async (req, res) => {
+    try {
+        const sourceCanvas = await Canvas.findOne({ canvasId: req.params.id });
+
+        if (!sourceCanvas) {
+            return res.status(404).json({ message: 'Source canvas not found' });
+        }
+
+        const newCanvasId = Math.random().toString(36).substring(2, 9);
+
+        const branchedCanvas = await Canvas.create({
+            canvasId: newCanvasId,
+            name: `Branch of ${sourceCanvas.name}`,
+            owner: req.user._id,
+            members: sourceCanvas.members, // Copy collaborators? Or keep it private? 
+            // Usually branches inherit members in collaborative tools, but let's copy them for now.
+            documentState: sourceCanvas.documentState,
+            groupId: sourceCanvas.groupId || sourceCanvas.canvasId,
+            parentId: sourceCanvas.canvasId,
+        });
+
+        res.status(201).json(branchedCanvas);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get all branches in a group
+// @route   GET /api/canvas/:id/branches
+// @access  Private
+export const getRelatedBranches = async (req, res) => {
+    try {
+        const canvas = await Canvas.findOne({ canvasId: req.params.id });
+        if (!canvas) {
+            return res.status(404).json({ message: 'Canvas not found' });
+        }
+
+        const branches = await Canvas.find({ groupId: canvas.groupId || canvas.canvasId })
+            .select('canvasId name updatedAt owner')
+            .sort({ updatedAt: -1 });
+
+        res.json(branches);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export default {
+    createCanvas,
+    getCanvas,
+    getMyCanvases,
+    inviteUser,
+    deleteCanvas,
+    toggleFavorite,
+    updateCanvasName,
+    removeMember,
+    branchCanvas,
+    getRelatedBranches
 };

@@ -50,11 +50,13 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const [fillEnabled, setFillOn] = useState(false);
   const [canvasMetadata, setCanvasMetadata] = useState(null);
+  const [branches, setBranches] = useState([]);
 
   const [activeLayer, setActiveLayer] = useState('default-layer');
 
   useEffect(() => {
     fetchCanvasMetadata();
+    fetchRelatedBranches();
   }, [canvasId]);
 
   const fetchCanvasMetadata = async () => {
@@ -67,6 +69,33 @@ function CanvasWorkspace({ canvasEngineRef }) {
       setCanvasMetadata(res.data);
     } catch (err) {
       console.error('Error fetching canvas metadata:', err);
+    }
+  };
+
+  const fetchRelatedBranches = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await axios.get(`${API_BASE_URL}/canvas/${canvasId}/branches`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBranches(res.data);
+    } catch (err) {
+      console.error('Error fetching related branches:', err);
+    }
+  };
+
+  const handleBranch = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await axios.post(`${API_BASE_URL}/canvas/${canvasId}/branch`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      navigate(`/canvas/${res.data.canvasId}`);
+    } catch (err) {
+      console.error('Error branching canvas:', err);
+      alert('Failed to create branch');
     }
   };
 
@@ -175,6 +204,8 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onLogout={onLogout}
           userRole={userRole}
           onExport={() => handleAction('export')}
+          branches={branches}
+          onBranch={handleBranch}
         />
       </div>
 
