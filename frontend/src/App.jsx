@@ -61,10 +61,11 @@ function CanvasWorkspace({ canvasEngineRef }) {
 
   const fetchCanvasMetadata = async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    const isGuestCanvas = canvasId.startsWith('guest-');
+    if (!token && !isGuestCanvas) return;
     try {
       const res = await axios.get(`${API_BASE_URL}/canvas/${canvasId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: token ? `Bearer ${token}` : 'Bearer null' }
       });
       setCanvasMetadata(res.data);
     } catch (err) {
@@ -74,10 +75,11 @@ function CanvasWorkspace({ canvasEngineRef }) {
 
   const fetchRelatedBranches = async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    const isGuestCanvas = canvasId.startsWith('guest-');
+    if (!token && !isGuestCanvas) return;
     try {
       const res = await axios.get(`${API_BASE_URL}/canvas/${canvasId}/branches`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: token ? `Bearer ${token}` : 'Bearer null' }
       });
       setBranches(res.data);
     } catch (err) {
@@ -87,10 +89,11 @@ function CanvasWorkspace({ canvasEngineRef }) {
 
   const handleBranch = async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    const isGuestCanvas = canvasId.startsWith('guest-');
+    if (!token && !isGuestCanvas) return;
     try {
       const res = await axios.post(`${API_BASE_URL}/canvas/${canvasId}/branch`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: token ? `Bearer ${token}` : 'Bearer null' }
       });
       navigate(`/canvas/${res.data.canvasId}`);
     } catch (err) {
@@ -102,6 +105,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
   // Compute User Role
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const getRole = () => {
+    if (canvasId.startsWith('guest-')) return 'owner'; // Guests are owners of guest canvases
     if (!canvasMetadata) return 'viewer'; // Default until loaded
     const isOwner = canvasMetadata.owner?._id === currentUser._id || canvasMetadata.owner === currentUser._id;
     if (isOwner) return 'owner';
@@ -112,11 +116,12 @@ function CanvasWorkspace({ canvasEngineRef }) {
 
   const handleNameChange = async (newName) => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    const isGuestCanvas = canvasId.startsWith('guest-');
+    if (!token && !isGuestCanvas) return;
     try {
       const res = await axios.put(`${API_BASE_URL}/canvas/${canvasId}/name`,
         { name: newName },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: token ? `Bearer ${token}` : 'Bearer null' } }
       );
       setCanvasMetadata(res.data);
       fetchRelatedBranches(); // Refresh branch list to show new name
@@ -127,10 +132,11 @@ function CanvasWorkspace({ canvasEngineRef }) {
 
   const handleDeleteBranch = async (targetCanvasId) => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    const isGuestCanvas = targetCanvasId.startsWith('guest-');
+    if (!token && !isGuestCanvas) return;
     try {
       await axios.delete(`${API_BASE_URL}/canvas/${targetCanvasId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: token ? `Bearer ${token}` : 'Bearer null' }
       });
 
       if (targetCanvasId === canvasId) {

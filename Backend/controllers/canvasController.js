@@ -37,9 +37,18 @@ export const getCanvas = async (req, res) => {
             return res.status(404).json({ message: 'Canvas not found' });
         }
 
+        // --- GUEST BYPASS ---
+        if (req.params.id.startsWith('guest-')) {
+            return res.json(canvas);
+        }
+
+        if (!req.user) {
+            return res.status(401).json({ message: 'Not authorized, login required for this canvas' });
+        }
+
         // Check permissions (Owner or Member)
-        const isOwner = canvas.owner._id.equals(req.user._id);
-        const isMember = canvas.members.some(m => m.user._id.equals(req.user._id));
+        const isOwner = canvas.owner?._id.equals(req.user._id);
+        const isMember = canvas.members.some(m => m.user?._id.equals(req.user._id));
 
         if (!isOwner && !isMember) {
             return res.status(403).json({ message: 'Not authorized to view this canvas' });
@@ -137,9 +146,12 @@ export const deleteCanvas = async (req, res) => {
             return res.status(404).json({ message: 'Canvas not found' });
         }
 
-        // Only owner can delete
-        if (canvas.owner.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: 'Only owner can delete this canvas' });
+        // --- GUEST BYPASS ---
+        // For non-guest canvases, ensure ownership
+        if (!req.params.id.startsWith('guest-')) {
+            if (!req.user || (canvas.owner && canvas.owner.toString() !== req.user._id.toString())) {
+                return res.status(403).json({ message: 'Not authorized to delete this canvas' });
+            }
         }
 
         // If it's a master canvas (no parentId), perform cascading delete
@@ -191,7 +203,7 @@ export const updateCanvasName = async (req, res) => {
     const { name } = req.body;
     const { id } = req.params;
 
-    console.log(`[API] Attempting to update canvas name. ID: ${id}, New Name: ${name}, User: ${req.user._id}`);
+    console.log(`[API] Attempting to update canvas name. ID: ${id}, New Name: ${name}`);
 
     try {
         const canvas = await Canvas.findOne({ canvasId: id });
@@ -201,14 +213,18 @@ export const updateCanvasName = async (req, res) => {
             return res.status(404).json({ message: 'Canvas not found' });
         }
 
-        // Only owner can update name
-        // Use toString() to be safe with ObjectId comparison if needed, or stick to .equals
-        const isOwner = canvas.owner.toString() === req.user._id.toString();
+        // --- GUEST BYPASS ---
+        // Allow anyone to rename a guest canvas
+        if (!id.startsWith('guest-')) {
+            if (!req.user) {
+                return res.status(401).json({ message: 'Login required to rename this canvas' });
+            }
 
-        console.log(`[API] Ownership Check - Owner: ${canvas.owner}, Requestor: ${req.user._id}, Match: ${isOwner}`);
-
-        if (!isOwner) {
-            return res.status(403).json({ message: 'Only owner can update canvas name' });
+            // Only owner can update name
+            const isOwner = canvas.owner && canvas.owner.toString() === req.user._id.toString();
+            if (!isOwner) {
+                return res.status(403).json({ message: 'Only owner can update canvas name' });
+            }
         }
 
         canvas.name = name;
@@ -260,13 +276,13 @@ export const branchCanvas = async (req, res) => {
         }
 
         const newCanvasId = Math.random().toString(36).substring(2, 9);
+        const finalId = req.params.id.startsWith('guest-') ? `guest-${newCanvasId}` : newCanvasId;
 
         const branchedCanvas = await Canvas.create({
-            canvasId: newCanvasId,
+            canvasId: finalId,
             name: `Branch of ${sourceCanvas.name}`,
-            owner: req.user._id,
-            members: sourceCanvas.members, // Copy collaborators? Or keep it private? 
-            // Usually branches inherit members in collaborative tools, but let's copy them for now.
+            owner: req.user?._id || undefined, // Set owner if token exists, else undefined
+            members: sourceCanvas.members,
             documentState: sourceCanvas.documentState,
             groupId: sourceCanvas.groupId || sourceCanvas.canvasId,
             parentId: sourceCanvas.canvasId,
@@ -282,6 +298,7 @@ export const branchCanvas = async (req, res) => {
 // @route   GET /api/canvas/:id/branches
 // @access  Private
 export const getRelatedBranches = async (req, res) => {
+    console.log('>>> [API ENTRY] getRelatedBranches called for ID:', req.params.id);
     try {
         const canvas = await Canvas.findOne({ canvasId: req.params.id }).lean();
         if (!canvas) {
@@ -307,6 +324,11 @@ export const getRelatedBranches = async (req, res) => {
             createdAt: b.createdAt || b.updatedAt || new Date(), // Robust fallback
             isMaster: (!b.parentId || b.parentId === "")
         }));
+
+        console.log(`[DEBUG] getRelatedBranches for ${req.params.id}: returning ${processedBranches.length} branches`);
+        processedBranches.forEach(pb => {
+            console.log(`  - Branch: ${pb.name}, isMaster: ${pb.isMaster}, createdAt: ${pb.createdAt}`);
+        });
 
         // Ensure the source/master canvas itself is included in the list (fallback)
         const hasSelf = processedBranches.some(b => b.canvasId === canvas.canvasId);

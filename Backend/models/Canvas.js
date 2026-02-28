@@ -14,7 +14,7 @@ const canvasSchema = new mongoose.Schema({
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: false, // Allow guest canvases without an owner
     },
     members: [{
         user: {

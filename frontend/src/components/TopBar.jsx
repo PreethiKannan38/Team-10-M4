@@ -63,6 +63,15 @@ export default function TopBar({
     setIsEditing(false);
   };
 
+  const masterBranch = branches.find(b => b.isMaster);
+  const masterName = masterBranch?.name || 'Main';
+
+  // Find current branch in the list to check its master status
+  const currentBranchInList = branches.find(b => b.canvasId === canvas?.canvasId);
+  const isCurrentMaster = currentBranchInList ? currentBranchInList.isMaster : !currentBranchInList; // Default to true if not found yet (usually master)
+
+  const breadcrumbName = isCurrentMaster ? masterName : `${masterName} / ${canvasName}`;
+
   return (
     <div className="w-full h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 flex-shrink-0 z-50">
       {/* Left: Logo & Editable Name */}
@@ -197,6 +206,7 @@ export default function TopBar({
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   autoFocus
+                  onBlur={handleNameSubmit}
                   onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
                   className="bg-slate-50 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
@@ -212,7 +222,11 @@ export default function TopBar({
                 className={`flex items-center gap-2 ${userRole !== 'viewer' ? 'cursor-pointer' : 'cursor-default'}`}
                 onClick={() => userRole !== 'viewer' && setIsEditing(true)}
               >
-                <h1 className="text-sm font-bold text-slate-800 tracking-tight">{canvasName || 'Untitled Canvas'}</h1>
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-sm font-bold text-slate-800 tracking-tight">
+                    {breadcrumbName || 'Untitled Canvas'}
+                  </h1>
+                </div>
                 {userRole !== 'viewer' && <Edit2 size={12} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />}
               </div>
             )}
