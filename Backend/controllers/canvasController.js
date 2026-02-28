@@ -57,9 +57,21 @@ export const getCanvas = async (req, res) => {
 export const getMyCanvases = async (req, res) => {
     try {
         const canvases = await Canvas.find({
-            $or: [
-                { owner: req.user._id },
-                { 'members.user': req.user._id }
+            $and: [
+                {
+                    $or: [
+                        { owner: req.user._id },
+                        { 'members.user': req.user._id }
+                    ]
+                },
+                {
+                    // A canvas is a "Master" if it has no parentId
+                    $or: [
+                        { parentId: { $exists: false } },
+                        { parentId: null },
+                        { parentId: "" }
+                    ]
+                }
             ]
         }).sort({ updatedAt: -1 });
         res.json(canvases);
@@ -130,9 +142,16 @@ export const deleteCanvas = async (req, res) => {
             return res.status(403).json({ message: 'Only owner can delete this canvas' });
         }
 
-        await Canvas.deleteOne({ canvasId: req.params.id });
-
-        res.json({ message: 'Canvas deleted successfully' });
+        // If it's a master canvas (no parentId), perform cascading delete
+        if (!canvas.parentId) {
+            console.log(`[API] Master canvas deletion detected. Performing cascading delete for groupId: ${canvas.groupId}`);
+            await Canvas.deleteMany({ groupId: canvas.groupId || canvas.canvasId });
+            res.json({ message: 'Master canvas and all its branches deleted successfully' });
+        } else {
+            console.log(`[API] Branch deletion detected for canvasId: ${req.params.id}`);
+            await Canvas.deleteOne({ canvasId: req.params.id });
+            res.json({ message: 'Branch deleted successfully' });
+        }
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -264,16 +283,47 @@ export const branchCanvas = async (req, res) => {
 // @access  Private
 export const getRelatedBranches = async (req, res) => {
     try {
-        const canvas = await Canvas.findOne({ canvasId: req.params.id });
+        const canvas = await Canvas.findOne({ canvasId: req.params.id }).lean();
         if (!canvas) {
             return res.status(404).json({ message: 'Canvas not found' });
         }
 
-        const branches = await Canvas.find({ groupId: canvas.groupId || canvas.canvasId })
-            .select('canvasId name updatedAt owner')
-            .sort({ updatedAt: -1 });
+        // The absolute master ID is the groupId, or the canvasId itself if no groupId exists
+        const rootMasterId = canvas.groupId || (canvas.parentId ? canvas.parentId : canvas.canvasId);
 
-        res.json(branches);
+        let branches = await Canvas.find({
+            $or: [
+                { groupId: rootMasterId },
+                { canvasId: rootMasterId }
+            ]
+        })
+            .select('canvasId name updatedAt createdAt owner groupId parentId')
+            .sort({ createdAt: 1 })
+            .lean();
+
+        // Map through branches to add isMaster flag and ensure self is included if missing
+        let processedBranches = branches.map(b => ({
+            ...b,
+            createdAt: b.createdAt || b.updatedAt || new Date(), // Robust fallback
+            isMaster: (!b.parentId || b.parentId === "")
+        }));
+
+        // Ensure the source/master canvas itself is included in the list (fallback)
+        const hasSelf = processedBranches.some(b => b.canvasId === canvas.canvasId);
+        if (!hasSelf) {
+            processedBranches.push({
+                canvasId: canvas.canvasId,
+                name: canvas.name,
+                updatedAt: canvas.updatedAt,
+                createdAt: canvas.createdAt,
+                owner: canvas.owner,
+                groupId: canvas.groupId,
+                parentId: canvas.parentId,
+                isMaster: (!canvas.parentId || canvas.parentId === "")
+            });
+        }
+
+        res.json(processedBranches);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus } from 'lucide-react';
+import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 
@@ -13,7 +13,8 @@ export default function TopBar({
   userRole,
   onExport,
   branches = [],
-  onBranch
+  onBranch,
+  onBranchDelete
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -98,24 +99,79 @@ export default function TopBar({
               <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="p-2 max-h-64 overflow-y-auto">
                   <p className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Branches</p>
-                  {branches.map((b) => (
-                    <button
-                      key={b.canvasId}
-                      onClick={() => {
-                        if (b.canvasId !== canvas?.canvasId) {
-                          navigate(`/canvas/${b.canvasId}`);
-                        }
-                        setBranchMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${b.canvasId === canvas?.canvasId ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <GitBranch size={14} className={b.canvasId === canvas?.canvasId ? 'text-indigo-600' : 'text-slate-400'} />
-                        <span className="text-xs font-bold truncate">{b.name}</span>
-                      </div>
-                      {b.canvasId === canvas?.canvasId && <Check size={14} />}
-                    </button>
-                  ))}
+                  {[...branches]
+                    .sort((a, b) => {
+                      const aIsMaster = a.isMaster;
+                      const bIsMaster = b.isMaster;
+                      if (aIsMaster && !bIsMaster) return -1;
+                      if (!aIsMaster && bIsMaster) return 1;
+                      return new Date(b.createdAt) - new Date(a.createdAt);
+                    })
+                    .map((b) => {
+                      const isMaster = b.isMaster;
+                      const isActive = b.canvasId === canvas?.canvasId;
+
+                      const itemStyle = isActive
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                        : isMaster
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm' // Lighter highlight for master
+                          : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-100';
+
+                      return (
+                        <div key={b.canvasId} className="group/branch relative mb-2 last:mb-0">
+                          <button
+                            onClick={() => {
+                              if (!isActive) {
+                                navigate(`/canvas/${b.canvasId}`);
+                              }
+                              setBranchMenuOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all border ${itemStyle}`}
+                          >
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <GitBranch size={16} className={isActive ? 'text-white/80' : isMaster ? 'text-indigo-400' : 'text-slate-400'} />
+                              <div className="text-left overflow-hidden">
+                                <span className={`text-xs font-black truncate block tracking-tight ${isActive ? 'text-white' : isMaster ? 'text-indigo-900' : 'text-slate-900'}`}>
+                                  {b.name}
+                                </span>
+                                {isMaster ? (
+                                  <div className="flex items-center gap-1.5 -mt-0.5">
+                                    <div className="w-1 h-1 rounded-full bg-indigo-500 animate-pulse" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500">
+                                      Master Canvas
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className={`text-[9px] font-bold uppercase tracking-wider block -mt-0.5 ${isActive ? 'text-indigo-100' : 'text-slate-400'}`}>
+                                    Created on {b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isActive && (
+                                <div className="bg-white/20 text-white rounded-full p-0.5">
+                                  <Check size={10} strokeWidth={4} />
+                                </div>
+                              )}
+                              {!isMaster && (userRole === 'owner' || userRole === 'editor') && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Delete branch "${b.name}"?`)) {
+                                      onBranchDelete?.(b.canvasId);
+                                    }
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover/branch:opacity-100"
+                                >
+                                  <Trash2 size={14} />
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    })}
                 </div>
                 <div className="p-2 border-t border-slate-50 bg-slate-50/50">
                   <button

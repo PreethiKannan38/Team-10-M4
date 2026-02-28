@@ -42,7 +42,7 @@ const canvasSchema = new mongoose.Schema({
     parentId: {
         type: String,
     }
-}, { timestamps: true });
+}, { collection: 'canvas', timestamps: true });
 
 const Canvas = mongoose.model('Canvas', canvasSchema);
 

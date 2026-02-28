@@ -94,7 +94,15 @@ const Dashboard = () => {
         .filter(c => {
             const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesFilter = filterBy === 'all' || (filterBy === 'favorites' && c.isFavorite);
-            return matchesSearch && matchesFilter;
+
+            // Unified Master Canvas Check:
+            // 1. If it has no groupId, it's a legacy master.
+            // 2. If it has a groupId, it must be the same as its canvasId.
+            // 3. It must not have a parentId.
+            const isMaster = (!c.groupId) || (c.canvasId === c.groupId) || (!c.parentId);
+            const isActuallyBranch = c.parentId && c.parentId !== "";
+
+            return matchesSearch && matchesFilter && !isActuallyBranch;
         })
         .sort((a, b) => {
             let valA = a[sortBy];

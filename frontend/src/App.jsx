@@ -119,8 +119,30 @@ function CanvasWorkspace({ canvasEngineRef }) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setCanvasMetadata(res.data);
+      fetchRelatedBranches(); // Refresh branch list to show new name
     } catch (err) {
       console.error('Error updating canvas name:', err);
+    }
+  };
+
+  const handleDeleteBranch = async (targetCanvasId) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/canvas/${targetCanvasId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (targetCanvasId === canvasId) {
+        // If we deleted the current branch, go back to dashboard
+        navigate('/dashboard');
+      } else {
+        // Otherwise just refresh list
+        fetchRelatedBranches();
+      }
+    } catch (err) {
+      console.error('Error deleting branch:', err);
+      alert('Failed to delete branch');
     }
   };
 
@@ -206,6 +228,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onExport={() => handleAction('export')}
           branches={branches}
           onBranch={handleBranch}
+          onBranchDelete={handleDeleteBranch}
         />
       </div>
 
