@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Pencil, MousePointer2, Eraser, Square, Circle, Type, PaintBucket, Move, PenTool, Triangle, Hexagon,
-  Undo2, Redo2, Trash2, Download, Brush
+  Undo2, Redo2, Trash2, Download, Brush, Tag
 } from 'lucide-react'
 
 const toolGroups = [
@@ -65,6 +65,7 @@ const toolGroups = [
     color: '#444A5A',
     popup: false,
     tools: [
+      { id: 'tag', icon: Tag, name: 'Tag Current State' },
       { id: 'undo', icon: Undo2, name: 'Undo Action' },
       { id: 'redo', icon: Redo2, name: 'Redo Action' },
       { id: 'export', icon: Download, name: 'Download Canvas' }
@@ -81,7 +82,7 @@ export default function Toolbar({ activeTool, onToolChange, onAction, onPreviewA
   }
 
   const handleToolClick = (tool) => {
-    const isAction = ['undo', 'redo', 'clear', 'export'].includes(tool.id)
+    const isAction = ['undo', 'redo', 'clear', 'export', 'tag'].includes(tool.id)
     if (isAction) onAction?.(tool.id)
     else onToolChange(tool.id)
   }

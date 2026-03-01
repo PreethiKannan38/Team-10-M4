@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus, Trash2, Clock } from 'lucide-react';
+import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus, Trash2, Clock, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 
@@ -12,6 +12,7 @@ export default function TopBar({
   onNameChange,
   userRole,
   onExport,
+  onTag,
   branches = [],
   onBranch,
   onBranchDelete,
@@ -244,6 +245,16 @@ export default function TopBar({
             className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
           >
             Clear Canvas
+          </button>
+
+          {/* Tag Milestone Button */}
+          <button
+            onClick={onTag}
+            className="flex items-center gap-2 px-4 py-2 mx-2 text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-full transition-all active:scale-95 border border-indigo-200"
+            title="Tag Current State"
+          >
+            <Tag className="w-3.5 h-3.5" />
+            <span>Tag</span>
           </button>
 
           <button

@@ -373,9 +373,74 @@ export const getTimeline = async (req, res) => {
                 id: e._id,
                 update: e.update.toString('base64'), // Send as base64 for JSON transport
                 timestamp: e.createdAt,
-                type: e.type
+                type: e.type,
+                name: e.name // Include tag name for milestones
             }))
         });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// US7: Tag current timeline state
+export const tagTimelineEvent = async (req, res) => {
+    try {
+        const { id: canvasId } = req.params;
+        const { name } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ message: 'Tag name is required' });
+        }
+
+        const canvas = await Canvas.findOne({ canvasId });
+        if (!canvas) {
+            return res.status(404).json({ message: 'Canvas not found' });
+        }
+
+        if (!canvas.documentState) {
+            return res.status(400).json({ message: 'Canvas has no state to tag' });
+        }
+
+        // Save a new milestone event with the current canvas state
+        const milestoneEvent = await Event.create({
+            canvasId,
+            update: canvas.documentState,
+            type: 'milestone',
+            name,
+            user: req.user?._id
+        });
+
+        res.status(201).json({
+            message: 'Timeline tagged successfully',
+            event: {
+                id: milestoneEvent._id,
+                name: milestoneEvent.name,
+                timestamp: milestoneEvent.createdAt,
+                type: milestoneEvent.type
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// US7: Remove a tag from the timeline
+export const removeTimelineEventTag = async (req, res) => {
+    try {
+        const { id: canvasId, eventId } = req.params;
+
+        const event = await Event.findOne({ _id: eventId, canvasId });
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+
+        // We can safely delete purely milestone events
+        if (event.type === 'milestone') {
+            await Event.findByIdAndDelete(eventId);
+            res.status(200).json({ message: 'Tag removed successfully' });
+        } else {
+            return res.status(400).json({ message: 'Can only remove milestone tags' });
+        }
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -392,5 +457,7 @@ export default {
     removeMember,
     branchCanvas,
     getRelatedBranches,
-    getTimeline
+    getTimeline,
+    tagTimelineEvent,
+    removeTimelineEventTag
 };

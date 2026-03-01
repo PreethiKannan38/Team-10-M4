@@ -16,5 +16,7 @@ router.put('/:id/favorite', protect, toggleFavorite);
 router.post('/:id/branch', protect, canvasController.branchCanvas);
 router.get('/:id/branches', protect, canvasController.getRelatedBranches);
 router.get('/:id/timeline', protect, canvasController.getTimeline);
+router.post('/:id/tag', protect, canvasController.tagTimelineEvent);
+router.delete('/:id/tag/:eventId', protect, canvasController.removeTimelineEventTag);
 
 export default router;

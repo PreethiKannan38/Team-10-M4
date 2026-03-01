@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, X, Clock, Activity, Layout } from 'lucide-react';
+import { Play, Pause, RotateCcw, X, Clock, Activity, Layout, Trash2 } from 'lucide-react';
+import axios from 'axios';
+import { API_BASE_URL } from '../config';
 import ReplayManager from '../Engine/managers/ReplayManager';
 import ReplayCanvas from './ReplayCanvas';
 
@@ -35,6 +37,17 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
         };
     }, [isOpen, canvasId]);
 
+    useEffect(() => {
+        if (!isOpen && replayManagerRef.current) {
+            replayManagerRef.current.pause();
+            setIsPlaying(false);
+        }
+    }, [isOpen]);
+
+    const milestones = events.map((e, index) => (e.type === 'milestone' && e.name ? { index, name: e.name } : null)).filter(Boolean);
+
+    if (!isOpen) return null;
+
     const handlePlayPause = () => {
         if (isPlaying) {
             replayManagerRef.current.pause();
@@ -45,6 +58,38 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
             replayManagerRef.current.play(() => {
                 setIsPlaying(false);
             });
+        }
+    };
+
+    const handleRemoveTag = async (eventId, e) => {
+        if (e) e.stopPropagation();
+
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        try {
+            await axios.delete(`${API_BASE_URL}/canvas/${canvasId}/tag/${eventId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            // Remove it from local state immediately to avoid full reload if possible
+            const updatedEvents = events.filter(ev => ev.id !== eventId || ev.type !== 'milestone');
+            setEvents(updatedEvents);
+
+            // Adjust current index if we just deleted the event we were on
+            if (currentEvent && currentEvent.id === eventId) {
+                // If there's an event before this one, jump to it, otherwise reset
+                if (currentIndex > 0) {
+                    const newIndex = currentIndex - 1;
+                    setCurrentIndex(newIndex);
+                    if (replayManagerRef.current) replayManagerRef.current.jumpTo(newIndex);
+                } else {
+                    handleReset();
+                }
+            }
+        } catch (err) {
+            console.error('Failed to remove tag:', err);
+            alert('Failed to remove tag.');
         }
     };
 
@@ -106,8 +151,27 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
                         </div>
                     </div>
                     {currentEvent && (
-                        <div className="bg-slate-50 py-2.5 px-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-indigo-500 text-center border border-indigo-100/50">
-                            {currentEvent.type || 'Update'} • {new Date(currentEvent.timestamp).toLocaleTimeString()}
+                        <div className="flex flex-col gap-2">
+                            <div className="bg-slate-50 py-2.5 px-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-indigo-500 text-center border border-indigo-100/50">
+                                {currentEvent.type || 'Update'} • {new Date(currentEvent.timestamp).toLocaleTimeString()}
+                            </div>
+
+                            {/* Milestone Tag Panel */}
+                            {currentEvent.type === 'milestone' && currentEvent.name && (
+                                <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg shadow-indigo-200 flex items-center justify-between group/tag animate-in slide-in-from-top-2">
+                                    <div className="flex flex-col min-w-0 pr-2">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-indigo-200">Milestone Tag</span>
+                                        <span className="text-sm font-bold truncate">{currentEvent.name}</span>
+                                    </div>
+                                    <button
+                                        onClick={(e) => handleRemoveTag(currentEvent.id, e)}
+                                        className="w-8 h-8 rounded-xl bg-white/10 hover:bg-red-500 hover:text-white text-indigo-100 flex items-center justify-center transition-all shrink-0 active:scale-95"
+                                        title="Remove Tag"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -145,6 +209,29 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
                                 className="absolute left-0 top-1/2 -translate-y-1/2 h-3 bg-indigo-500/20 rounded-full pointer-events-none z-0"
                                 style={{ width: `${events.length > 0 ? ((currentIndex + 1) / events.length) * 100 : 0}%` }}
                             />
+                            {/* Milestone Pips */}
+                            {milestones.map(m => {
+                                const leftPercent = events.length > 1 ? (m.index / (events.length - 1)) * 100 : 0;
+                                return (
+                                    <div
+                                        key={m.index}
+                                        className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-indigo-500 rounded-full cursor-pointer z-20 hover:scale-[1.75] hover:bg-indigo-50 hover:border-indigo-600 transition-all shadow-md group/pip flex items-center justify-center peer"
+                                        style={{ left: `calc(${leftPercent}% - 6px)` }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setCurrentIndex(m.index);
+                                            if (replayManagerRef.current) {
+                                                replayManagerRef.current.jumpTo(m.index);
+                                            }
+                                        }}
+                                    >
+                                        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-2xl opacity-0 scale-90 group-hover/pip:opacity-100 group-hover/pip:scale-100 transition-all pointer-events-none whitespace-nowrap z-50">
+                                            {m.name}
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                         <div className="flex justify-between items-center px-1">
                             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Start</span>

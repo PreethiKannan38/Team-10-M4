@@ -18,6 +18,9 @@ const eventSchema = new mongoose.Schema({
     type: {
         type: String,
         default: 'update', // 'update', 'milestone', 'snapshot'
+    },
+    name: {
+        type: String, // Used for 'milestone' tags
     }
 }, { timestamps: true });
 

@@ -164,6 +164,26 @@ function CanvasWorkspace({ canvasEngineRef }) {
     if (canvasEngineRef.current) canvasEngineRef.current.clearAll();
   };
 
+  const handleTagState = async () => {
+    const tagName = window.prompt("Enter a name for this timeline marker (e.g. 'Finished sketching base'):");
+    if (!tagName || !tagName.trim()) return;
+
+    const token = localStorage.getItem('token');
+    const isGuestCanvas = canvasId.startsWith('guest-');
+    if (!token && !isGuestCanvas) return;
+
+    try {
+      await axios.post(`${API_BASE_URL}/canvas/${canvasId}/tag`,
+        { name: tagName.trim() },
+        { headers: { Authorization: token ? `Bearer ${token}` : 'Bearer null' } }
+      );
+      // Let the user know it worked visually (since prompt halts the UI, a simple alert or just silent success is fine, let's keep it silent if success)
+    } catch (err) {
+      console.error('Error tagging timeline:', err);
+      alert('Failed to tag timeline state');
+    }
+  };
+
   const handleAction = (actionId) => {
     if (!canvasEngineRef.current) return;
 
@@ -179,6 +199,9 @@ function CanvasWorkspace({ canvasEngineRef }) {
         break;
       case 'export':
         canvasEngineRef.current.exportToImage();
+        break;
+      case 'tag':
+        handleTagState();
         break;
       case 'dashboard':
         navigate('/');
@@ -230,6 +253,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           canvasName={canvasMetadata?.name}
           onNameChange={handleNameChange}
           onClear={clearCanvas}
+          onTag={handleTagState}
           onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout}
           userRole={userRole}
