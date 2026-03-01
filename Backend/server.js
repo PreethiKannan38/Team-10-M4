@@ -19,6 +19,7 @@ const require = createRequire(import.meta.url);
 const Y = require('yjs');
 const { setupWSConnection, setPersistence } = require('y-websocket/bin/utils');
 import Canvas from './models/Canvas.js';
+import Event from './models/Event.js';
 import authRoutes from './routes/authRoutes.js';
 import canvasRoutes from './routes/canvasRoutes.js';
 import snapshotRoutes from './routes/snapshotRoutes.js';
@@ -72,6 +73,57 @@ setPersistence({
 
       const savedCanvas = await Canvas.findOne({ canvasId: cleanDocName });
 
+      // --- TIMELINE LOGGING (US1) ---
+      // Batch state logger: Instead of saving every granular operation, we debounce/throttle
+      // and save full state snapshots. This improves UI replay performance drastically.
+      if (!doc._hasEventLogger) {
+        let batchTimeout = null;
+        let isFirstEvent = true;
+        let lastSaveTime = 0;
+
+        const saveBatchEvent = async (docState) => {
+          try {
+            await Event.create({
+              canvasId: cleanDocName,
+              update: Buffer.from(docState),
+              type: 'state-batch'
+            });
+            console.log(`[EventLog] Saved batch state snapshot for ${cleanDocName}`);
+          } catch (err) {
+            console.error(`[EventLog] Error saving batch update for ${cleanDocName}:`, err);
+          }
+        };
+
+        doc.on('update', async (update, origin) => {
+          if (isFirstEvent) {
+            isFirstEvent = false;
+            lastSaveTime = Date.now();
+            const docState = Y.encodeStateAsUpdate(doc);
+            saveBatchEvent(docState);
+            return;
+          }
+
+          // Throttle saves to max 4 times per second (250ms) to create smooth animation
+          const now = Date.now();
+          if (now - lastSaveTime > 250) {
+            lastSaveTime = now;
+            const docState = Y.encodeStateAsUpdate(doc);
+            saveBatchEvent(docState);
+          } else {
+            // Also debounce to ensure the absolute final state is captured after drawing stops
+            clearTimeout(batchTimeout);
+            batchTimeout = setTimeout(() => {
+              lastSaveTime = Date.now();
+              const docState = Y.encodeStateAsUpdate(doc);
+              saveBatchEvent(docState);
+            }, 300);
+          }
+        });
+
+        doc._hasEventLogger = true;
+        console.log(`[EventLog] Attached batched timeline logger to room: ${cleanDocName}`);
+      }
+
       if (savedCanvas && savedCanvas.documentState) {
         console.log(`[Yjs] Found state for ${cleanDocName} (${savedCanvas.documentState.length} bytes)`);
         Y.applyUpdate(doc, new Uint8Array(savedCanvas.documentState));
@@ -93,6 +145,8 @@ setPersistence({
           }
         });
       }
+
+
     } catch (err) {
       console.error(`[Yjs] Error loading document ${docName}:`, err);
     } finally {
@@ -105,7 +159,14 @@ setPersistence({
 
     // CRITICAL: Prevent overwrite if we are still loading the initial state
     if (docsLoading.has(cleanDocName)) {
-      console.log(`[Yjs] [Lock] SKIPPING SAVE for ${cleanDocName} - Load still in progress.`);
+      console.log(`[Yjs] Skipping write for ${cleanDocName}: Document is still loading.`);
+      return;
+    }
+
+    // CRITICAL (US4/Rollback): Prevent server from saving the dying future state 
+    // over our freshly restored database state when connections are forcibly closed
+    if (doc._isRolledBack) {
+      console.log(`[Yjs] Skipping write for ${cleanDocName}: Document was rolled back!`);
       return;
     }
 

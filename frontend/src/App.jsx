@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Navigat
 import TopBar from './components/TopBar';
 import Toolbar from './components/Toolbar';
 import Footer from './components/Footer';
+import TimelineControls from './components/TimelineControls';
 import Canvas from './components/Canvas';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
@@ -47,6 +48,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [eraserStrength, setEraserStrength] = useState(100);
   const [gridOpacity, setGridOpacity] = useState(30);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const [fillEnabled, setFillOn] = useState(false);
   const [canvasMetadata, setCanvasMetadata] = useState(null);
@@ -162,6 +164,26 @@ function CanvasWorkspace({ canvasEngineRef }) {
     if (canvasEngineRef.current) canvasEngineRef.current.clearAll();
   };
 
+  const handleTagState = async () => {
+    const tagName = window.prompt("Enter a name for this timeline marker (e.g. 'Finished sketching base'):");
+    if (!tagName || !tagName.trim()) return;
+
+    const token = localStorage.getItem('token');
+    const isGuestCanvas = canvasId.startsWith('guest-');
+    if (!token && !isGuestCanvas) return;
+
+    try {
+      await axios.post(`${API_BASE_URL}/canvas/${canvasId}/tag`,
+        { name: tagName.trim() },
+        { headers: { Authorization: token ? `Bearer ${token}` : 'Bearer null' } }
+      );
+      // Let the user know it worked visually (since prompt halts the UI, a simple alert or just silent success is fine, let's keep it silent if success)
+    } catch (err) {
+      console.error('Error tagging timeline:', err);
+      alert('Failed to tag timeline state');
+    }
+  };
+
   const handleAction = (actionId) => {
     if (!canvasEngineRef.current) return;
 
@@ -177,6 +199,9 @@ function CanvasWorkspace({ canvasEngineRef }) {
         break;
       case 'export':
         canvasEngineRef.current.exportToImage();
+        break;
+      case 'tag':
+        handleTagState();
         break;
       case 'dashboard':
         navigate('/');
@@ -228,6 +253,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           canvasName={canvasMetadata?.name}
           onNameChange={handleNameChange}
           onClear={clearCanvas}
+          onTag={handleTagState}
           onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout}
           userRole={userRole}
@@ -235,8 +261,17 @@ function CanvasWorkspace({ canvasEngineRef }) {
           branches={branches}
           onBranch={handleBranch}
           onBranchDelete={handleDeleteBranch}
+          isTimelineOpen={isTimelineOpen}
+          setIsTimelineOpen={setIsTimelineOpen}
         />
       </div>
+
+      <TimelineControls
+        canvasId={canvasId}
+        engine={canvasEngineRef.current}
+        isOpen={isTimelineOpen}
+        onClose={() => setIsTimelineOpen(false)}
+      />
 
       <div className="flex-1 flex overflow-hidden relative">
         {userRole !== 'viewer' && (

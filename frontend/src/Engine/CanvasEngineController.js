@@ -124,11 +124,13 @@ export class CanvasEngineController {
 
   setLocalUser(user) {
     if (!user) return;
+    const userId = user.id || user._id || 'unknown';
     this.awareness.setLocalStateField('user', {
-      name: user.name,
-      color: user.color,
-      id: user.id
+      name: user.name || 'Anonymous',
+      color: user.color || '#217BF4',
+      id: userId
     });
+    console.log(`[Engine] Local user set: ${user.name} (${userId})`);
   }
 
   setSelectionAwareness(selectedIds) {
@@ -315,6 +317,10 @@ export class CanvasEngineController {
 
       // 3. Create the object
       const bounds = this._calculateBounds(object.type, object.geometry, object.style);
+
+      const localState = this.awareness.getLocalState();
+      const creator = localState?.user || { id: 'unknown', name: 'Unknown' };
+
       const obj = {
         ...object,
         id,
@@ -329,6 +335,11 @@ export class CanvasEngineController {
           fontSize: object.style?.fontSize || 24,
         },
         bounds,
+        metadata: {
+          ...object.metadata,
+          creatorId: creator.id || 'unknown',
+          creatorName: creator.name || 'Unknown'
+        }
       };
 
       // 4. Update shared state
@@ -587,6 +598,7 @@ export class CanvasEngineController {
     // Dynamic grid that fades based on zoom level
     this.renderGrid();
 
+    // Normal live rendering
     const layers = this.yLayers.toArray();
     layers.forEach(layer => {
       if (!layer.visible) return;
