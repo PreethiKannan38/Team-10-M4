@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CanvasRenderer } from '../Engine/utils/CanvasRenderer';
 
-const ReplayCanvas = ({ state, isLoading, engine }) => {
+const ReplayCanvas = ({ state, isLoading, engine, hiddenCollaborators = new Set() }) => {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
     const [viewState, setViewState] = useState({
@@ -26,15 +26,29 @@ const ReplayCanvas = ({ state, isLoading, engine }) => {
         return () => window.removeEventListener('resize', resizeCanvas);
     }, []);
 
-    // Re-render when state or viewState changes
+    // Re-render when state, viewState, or hiddenCollaborators change
     useEffect(() => {
         render();
-    }, [state, viewState]);
+    }, [state, viewState, hiddenCollaborators]);
 
     const render = () => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
+
+        // Filter objects based on hiddenCollaborators
+        const filteredObjects = {};
+        if (state.objects) {
+            Object.entries(state.objects).forEach(([id, obj]) => {
+                // If the object has a creatorId and that ID is hidden, skip it.
+                // Legacy objects (no creatorId) or Unknown objects are shown by default.
+                const creatorId = obj.metadata?.creatorId;
+                if (creatorId && hiddenCollaborators.has(creatorId)) {
+                    return;
+                }
+                filteredObjects[id] = obj;
+            });
+        }
 
         // Calculate corrected pan to keep the drawing centered compared to the main canvas
         let correctedPan = { x: 0, y: 0 };
@@ -112,6 +126,7 @@ const ReplayCanvas = ({ state, isLoading, engine }) => {
         // Combine props state with internal view state
         const combinedState = {
             ...state,
+            objects: filteredObjects,
             zoom: zoom,
             pan: correctedPan,
             gridOpacity: 0.05

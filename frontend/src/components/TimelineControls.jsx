@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, X, Clock, Activity, Layout, Trash2, AlertTriangle, GitBranch, Loader2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, X, Clock, Activity, Layout, Trash2, AlertTriangle, GitBranch, Loader2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
@@ -15,6 +15,7 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
     const [replayState, setReplayState] = useState({ layers: [], objects: {} });
     const [showRollbackModal, setShowRollbackModal] = useState(false);
     const [isBranching, setIsBranching] = useState(false);
+    const [hiddenCollaborators, setHiddenCollaborators] = useState(new Set());
     const replayManagerRef = useRef(null);
     const navigate = useNavigate();
 
@@ -49,6 +50,29 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
     }, [isOpen]);
 
     const milestones = events.map((e, index) => (e.type === 'milestone' && e.name ? { index, name: e.name } : null)).filter(Boolean);
+
+    // US8: Extract unique collaborators from the current snapshot
+    const collaborators = React.useMemo(() => {
+        const collabMap = new Map();
+        if (replayState.objects) {
+            Object.values(replayState.objects).forEach(obj => {
+                if (obj.metadata?.creatorId) {
+                    collabMap.set(obj.metadata.creatorId, obj.metadata.creatorName || 'Unknown');
+                }
+            });
+        }
+        return Array.from(collabMap.entries()).map(([id, name]) => ({ id, name }));
+    }, [replayState.objects]);
+
+    const toggleCollaborator = (id) => {
+        const newHidden = new Set(hiddenCollaborators);
+        if (newHidden.has(id)) {
+            newHidden.delete(id);
+        } else {
+            newHidden.add(id);
+        }
+        setHiddenCollaborators(newHidden);
+    };
 
     if (!isOpen) return null;
 
@@ -189,7 +213,12 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
                         <X size={24} strokeWidth={2.5} />
                     </button>
 
-                    <ReplayCanvas state={replayState} isLoading={isLoading} engine={engine} />
+                    <ReplayCanvas
+                        state={replayState}
+                        isLoading={isLoading}
+                        engine={engine}
+                        hiddenCollaborators={hiddenCollaborators}
+                    />
                 </div>
             </div>
 
@@ -310,6 +339,30 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
                             </span>
                         </div>
                     </div>
+
+                    {/* US8: Collaborator Filters UI */}
+                    {collaborators.length > 0 && (
+                        <div className="w-full mt-2 flex flex-col gap-3">
+                            <div className="flex items-center gap-2 px-1">
+                                <Users size={14} className="text-slate-400" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Filter Contributors</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {collaborators.map(c => (
+                                    <button
+                                        key={c.id}
+                                        onClick={() => toggleCollaborator(c.id)}
+                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all border flex items-center gap-2 active:scale-95 ${!hiddenCollaborators.has(c.id)
+                                            ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
+                                            : 'bg-white border-slate-200 text-slate-400 opacity-60'}`}
+                                    >
+                                        <div className={`w-1.5 h-1.5 rounded-full ${!hiddenCollaborators.has(c.id) ? 'bg-indigo-500' : 'bg-slate-300'}`} />
+                                        {c.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="flex flex-col gap-3 w-full mt-auto">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Playback Speed</span>
