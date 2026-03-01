@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Navigat
 import TopBar from './components/TopBar';
 import Toolbar from './components/Toolbar';
 import Footer from './components/Footer';
+import TimelineControls from './components/TimelineControls';
 import Canvas from './components/Canvas';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
@@ -47,6 +48,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [eraserStrength, setEraserStrength] = useState(100);
   const [gridOpacity, setGridOpacity] = useState(30);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const [fillEnabled, setFillOn] = useState(false);
   const [canvasMetadata, setCanvasMetadata] = useState(null);
@@ -235,8 +237,17 @@ function CanvasWorkspace({ canvasEngineRef }) {
           branches={branches}
           onBranch={handleBranch}
           onBranchDelete={handleDeleteBranch}
+          isTimelineOpen={isTimelineOpen}
+          setIsTimelineOpen={setIsTimelineOpen}
         />
       </div>
+
+      <TimelineControls
+        canvasId={canvasId}
+        engine={canvasEngineRef.current}
+        isOpen={isTimelineOpen}
+        onClose={() => setIsTimelineOpen(false)}
+      />
 
       <div className="flex-1 flex overflow-hidden relative">
         {userRole !== 'viewer' && (

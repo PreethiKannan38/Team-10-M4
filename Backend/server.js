@@ -19,6 +19,7 @@ const require = createRequire(import.meta.url);
 const Y = require('yjs');
 const { setupWSConnection, setPersistence } = require('y-websocket/bin/utils');
 import Canvas from './models/Canvas.js';
+import Event from './models/Event.js';
 import authRoutes from './routes/authRoutes.js';
 import canvasRoutes from './routes/canvasRoutes.js';
 import snapshotRoutes from './routes/snapshotRoutes.js';
@@ -93,6 +94,29 @@ setPersistence({
           }
         });
       }
+
+      // --- TIMELINE LOGGING (US1) ---
+      // Attach a listener to capture every granular update
+      // We check if we already attached it to avoid duplicates
+      if (!doc._hasEventLogger) {
+        doc.on('update', async (update, origin) => {
+          // 'origin' is the websocket connection or null
+          // We save every update to the Event collection
+          try {
+            await Event.create({
+              canvasId: cleanDocName,
+              update: Buffer.from(update),
+              // In a real app, we'd extract userId from origin (the socket)
+              // For now, we log the raw update
+            });
+          } catch (err) {
+            console.error(`[EventLog] Error saving update for ${cleanDocName}:`, err);
+          }
+        });
+        doc._hasEventLogger = true;
+        console.log(`[EventLog] Attached timeline logger to room: ${cleanDocName}`);
+      }
+
     } catch (err) {
       console.error(`[Yjs] Error loading document ${docName}:`, err);
     } finally {

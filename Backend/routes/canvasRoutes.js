@@ -13,7 +13,8 @@ router.delete('/:id/members/:userId', protect, removeMember);
 router.put('/:id/name', protect, updateCanvasName);
 router.delete('/:id', protect, deleteCanvas);
 router.put('/:id/favorite', protect, toggleFavorite);
-router.post('/:id/branch', protect, branchCanvas);
-router.get('/:id/branches', protect, getRelatedBranches);
+router.post('/:id/branch', protect, canvasController.branchCanvas);
+router.get('/:id/branches', protect, canvasController.getRelatedBranches);
+router.get('/:id/timeline', protect, canvasController.getTimeline);
 
 export default router;

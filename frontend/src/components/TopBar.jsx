@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus, Trash2, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 
@@ -14,7 +14,9 @@ export default function TopBar({
   onExport,
   branches = [],
   onBranch,
-  onBranchDelete
+  onBranchDelete,
+  isTimelineOpen,
+  setIsTimelineOpen
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -242,6 +244,14 @@ export default function TopBar({
             className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
           >
             Clear Canvas
+          </button>
+
+          <button
+            onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${isTimelineOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+            title="Timeline Replay"
+          >
+            <Clock className="w-4 h-4" />
           </button>
 
           <button className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
