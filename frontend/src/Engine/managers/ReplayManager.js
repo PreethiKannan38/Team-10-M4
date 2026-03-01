@@ -3,15 +3,19 @@ import axios from 'axios';
 import { API_BASE_URL } from '../../config';
 
 class ReplayManager {
-    constructor(canvasId, onUpdate) {
+    constructor(canvasId, onUpdate, onIndexChange) {
         this.canvasId = canvasId;
-        this.onUpdate = onUpdate; // Callback to notify UI of state changes
-        this.replayDoc = new Y.Doc();
+        this.onUpdate = onUpdate;
+        this.onIndexChange = onIndexChange;
         this.events = [];
         this.currentIndex = -1;
         this.isReplaying = false;
+        this._initDoc();
+    }
 
-        // Listen for changes in the shadow doc
+    _initDoc() {
+        if (this.replayDoc) this.replayDoc.destroy();
+        this.replayDoc = new Y.Doc();
         this.replayDoc.on('update', () => {
             if (this.onUpdate) {
                 // Return the current state (layers and objects)
@@ -48,14 +52,7 @@ class ReplayManager {
 
         // Reset the doc if we are jumping backwards
         if (targetIndex < this.currentIndex) {
-            this.replayDoc = new Y.Doc();
-            // Re-attach listener
-            this.replayDoc.on('update', () => {
-                if (this.onUpdate) {
-                    const layers = this.replayDoc.getArray('layers').toJSON();
-                    this.onUpdate(layers);
-                }
-            });
+            this._initDoc();
             this.currentIndex = -1;
         }
 
@@ -67,6 +64,7 @@ class ReplayManager {
         }
 
         this.currentIndex = targetIndex;
+        if (this.onIndexChange) this.onIndexChange(this.currentIndex);
     }
 
     /**
@@ -110,8 +108,12 @@ class ReplayManager {
 
     reset() {
         this.pause();
-        this.replayDoc = new Y.Doc();
+        this._initDoc();
         this.currentIndex = -1;
+        // Trigger empty state
+        if (this.onUpdate) {
+            this.onUpdate({ layers: [], objects: {} });
+        }
     }
 }
 
