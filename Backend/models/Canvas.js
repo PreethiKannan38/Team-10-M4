@@ -14,7 +14,7 @@ const canvasSchema = new mongoose.Schema({
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: false, // Allow guest canvases without an owner
     },
     members: [{
         user: {
@@ -34,8 +34,15 @@ const canvasSchema = new mongoose.Schema({
     isFavorite: {
         type: Boolean,
         default: false,
+    },
+    groupId: {
+        type: String,
+        index: true,
+    },
+    parentId: {
+        type: String,
     }
-}, { timestamps: true });
+}, { collection: 'canvas', timestamps: true });
 
 const Canvas = mongoose.model('Canvas', canvasSchema);
 
