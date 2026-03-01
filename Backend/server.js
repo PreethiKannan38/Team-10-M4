@@ -73,6 +73,46 @@ setPersistence({
 
       const savedCanvas = await Canvas.findOne({ canvasId: cleanDocName });
 
+      // --- TIMELINE LOGGING (US1) ---
+      // Batch state logger: Instead of saving every granular operation, we debounce/throttle
+      // and save full state snapshots. This improves UI replay performance drastically.
+      if (!doc._hasEventLogger) {
+        let batchTimeout = null;
+        let isFirstEvent = true;
+
+        const saveBatchEvent = async (docState) => {
+          try {
+            await Event.create({
+              canvasId: cleanDocName,
+              update: Buffer.from(docState),
+              type: 'state-batch'
+            });
+            console.log(`[EventLog] Saved batch state snapshot for ${cleanDocName}`);
+          } catch (err) {
+            console.error(`[EventLog] Error saving batch update for ${cleanDocName}:`, err);
+          }
+        };
+
+        doc.on('update', async (update, origin) => {
+          if (isFirstEvent) {
+            isFirstEvent = false;
+            const docState = Y.encodeStateAsUpdate(doc);
+            saveBatchEvent(docState);
+            return;
+          }
+
+          // Debounce subsequent updates to log "every once in a while" as requested
+          clearTimeout(batchTimeout);
+          batchTimeout = setTimeout(() => {
+            const docState = Y.encodeStateAsUpdate(doc);
+            saveBatchEvent(docState);
+          }, 1000);
+        });
+
+        doc._hasEventLogger = true;
+        console.log(`[EventLog] Attached batched timeline logger to room: ${cleanDocName}`);
+      }
+
       if (savedCanvas && savedCanvas.documentState) {
         console.log(`[Yjs] Found state for ${cleanDocName} (${savedCanvas.documentState.length} bytes)`);
         Y.applyUpdate(doc, new Uint8Array(savedCanvas.documentState));
@@ -95,27 +135,6 @@ setPersistence({
         });
       }
 
-      // --- TIMELINE LOGGING (US1) ---
-      // Attach a listener to capture every granular update
-      // We check if we already attached it to avoid duplicates
-      if (!doc._hasEventLogger) {
-        doc.on('update', async (update, origin) => {
-          // 'origin' is the websocket connection or null
-          // We save every update to the Event collection
-          try {
-            await Event.create({
-              canvasId: cleanDocName,
-              update: Buffer.from(update),
-              // In a real app, we'd extract userId from origin (the socket)
-              // For now, we log the raw update
-            });
-          } catch (err) {
-            console.error(`[EventLog] Error saving update for ${cleanDocName}:`, err);
-          }
-        });
-        doc._hasEventLogger = true;
-        console.log(`[EventLog] Attached timeline logger to room: ${cleanDocName}`);
-      }
 
     } catch (err) {
       console.error(`[Yjs] Error loading document ${docName}:`, err);

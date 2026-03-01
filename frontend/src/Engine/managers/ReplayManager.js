@@ -43,24 +43,30 @@ class ReplayManager {
         }
     }
 
-    /**
-     * Replays events up to a specific index
-     * @param {number} targetIndex 
-     */
     async jumpTo(targetIndex) {
         if (targetIndex < -1 || targetIndex >= this.events.length) return;
 
-        // Reset the doc if we are jumping backwards
-        if (targetIndex < this.currentIndex) {
-            this._initDoc();
-            this.currentIndex = -1;
-        }
+        const targetEvent = targetIndex > -1 ? this.events[targetIndex] : null;
 
-        // Apply updates one by one from current + 1 to target
-        for (let i = this.currentIndex + 1; i <= targetIndex; i++) {
-            const event = this.events[i];
-            const binaryUpdate = Uint8Array.from(atob(event.update), c => c.charCodeAt(0));
+        // If it's a state-batch event (full snapshot), jump is O(1)
+        if (targetEvent && targetEvent.type === 'state-batch') {
+            this._initDoc(); // Reset doc
+            const binaryUpdate = Uint8Array.from(atob(targetEvent.update), c => c.charCodeAt(0));
             Y.applyUpdate(this.replayDoc, binaryUpdate);
+        } else {
+            // Legacy incremental events
+            // Reset the doc if we are jumping backwards
+            if (targetIndex < this.currentIndex) {
+                this._initDoc();
+                this.currentIndex = -1;
+            }
+
+            // Apply updates one by one from current + 1 to target
+            for (let i = this.currentIndex + 1; i <= targetIndex; i++) {
+                const event = this.events[i];
+                const binaryUpdate = Uint8Array.from(atob(event.update), c => c.charCodeAt(0));
+                Y.applyUpdate(this.replayDoc, binaryUpdate);
+            }
         }
 
         this.currentIndex = targetIndex;

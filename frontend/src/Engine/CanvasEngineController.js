@@ -446,12 +446,6 @@ export class CanvasEngineController {
     this.render();
   }
 
-  setReplayState(state) {
-    // state: { layers: [...], objects: {...} } or null to disable
-    this.state.replayState = state;
-    this.render();
-  }
-
   setUndoPreview(enabled) {
     this.state.undoPreview = enabled;
     this.render();
@@ -593,30 +587,17 @@ export class CanvasEngineController {
     // Dynamic grid that fades based on zoom level
     this.renderGrid();
 
-    // --- REPLAY / OVERRIDE ---
-    // used for US1 timeline replay
-    if (this.state.replayState) {
-      const { layers, objects } = this.state.replayState;
-      layers.forEach(layer => {
-        if (!layer.visible) return;
-        layer.objects.forEach(id => {
-          const obj = objects[id];
-          if (obj && obj.visible) this.renderObject(obj);
-        });
+    // Normal live rendering
+    const layers = this.yLayers.toArray();
+    layers.forEach(layer => {
+      if (!layer.visible) return;
+      layer.objects.forEach(id => {
+        const obj = this.yObjects.get(id);
+        if (obj && obj.visible) this.renderObject(obj);
       });
-    } else {
-      // Normal live rendering
-      const layers = this.yLayers.toArray();
-      layers.forEach(layer => {
-        if (!layer.visible) return;
-        layer.objects.forEach(id => {
-          const obj = this.yObjects.get(id);
-          if (obj && obj.visible) this.renderObject(obj);
-        });
-      });
-    }
+    });
 
-    if (this.currentTool && this.currentTool.renderPreview && !this.state.replayState) {
+    if (this.currentTool && this.currentTool.renderPreview) {
       this.currentTool.renderPreview(this.ctx, this);
     }
 
