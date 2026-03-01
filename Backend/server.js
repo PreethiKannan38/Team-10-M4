@@ -159,7 +159,14 @@ setPersistence({
 
     // CRITICAL: Prevent overwrite if we are still loading the initial state
     if (docsLoading.has(cleanDocName)) {
-      console.log(`[Yjs] [Lock] SKIPPING SAVE for ${cleanDocName} - Load still in progress.`);
+      console.log(`[Yjs] Skipping write for ${cleanDocName}: Document is still loading.`);
+      return;
+    }
+
+    // CRITICAL (US4/Rollback): Prevent server from saving the dying future state 
+    // over our freshly restored database state when connections are forcibly closed
+    if (doc._isRolledBack) {
+      console.log(`[Yjs] Skipping write for ${cleanDocName}: Document was rolled back!`);
       return;
     }
 

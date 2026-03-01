@@ -2,6 +2,9 @@ import Canvas from '../models/Canvas.js';
 import User from '../models/User.js';
 import Event from '../models/Event.js';
 import { v4 as uuidv4 } from 'uuid'; // We might need to install uuid or just use random string
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { docs } = require('y-websocket/bin/utils');
 
 // @desc    Create a new canvas
 // @route   POST /api/canvas/create
@@ -276,18 +279,55 @@ export const branchCanvas = async (req, res) => {
             return res.status(404).json({ message: 'Source canvas not found' });
         }
 
+        const { eventId } = req.body || {};
+        let targetDocumentState = sourceCanvas.documentState;
+        let eventFilter = { canvasId: sourceCanvas.canvasId };
+
+        console.log(`[Branching] Branching canvas ${sourceCanvas.canvasId}. Target eventId: ${eventId || 'None (Live)'}`);
+
+        // US4: If an eventId is specified, we are branching from a historical rollback point
+        if (eventId) {
+            const targetEvent = await Event.findOne({ _id: eventId, canvasId: sourceCanvas.canvasId });
+            if (targetEvent) {
+                console.log(`[Branching] Found target historical event! Reverting branch's initial documentState to this event.`);
+                targetDocumentState = targetEvent.update;
+                // Safest chronological slice in MongoDB is by intrinsic ObjectId
+                eventFilter._id = { $lte: targetEvent._id };
+            } else {
+                console.log(`[Branching] Target historical event ${eventId} NOT FOUND. Defaulting to live state.`);
+            }
+        }
+
         const newCanvasId = Math.random().toString(36).substring(2, 9);
         const finalId = req.params.id.startsWith('guest-') ? `guest-${newCanvasId}` : newCanvasId;
 
         const branchedCanvas = await Canvas.create({
             canvasId: finalId,
             name: `Branch of ${sourceCanvas.name}`,
-            owner: req.user?._id || undefined, // Set owner if token exists, else undefined
+            owner: req.user?._id || undefined,
             members: sourceCanvas.members,
-            documentState: sourceCanvas.documentState,
+            documentState: targetDocumentState,
             groupId: sourceCanvas.groupId || sourceCanvas.canvasId,
             parentId: sourceCanvas.canvasId,
         });
+
+        // US4: Inherit Event History from Parent up to the strict monotonic branch point
+        const parentEvents = await Event.find(eventFilter).sort({ createdAt: 1 });
+        console.log(`[Branching] Duplicating ${parentEvents.length} events into the new branch ${finalId}`);
+
+        if (parentEvents.length > 0) {
+            // Duplicate the events with the new branch's canvasId
+            const branchedEvents = parentEvents.map(ev => ({
+                canvasId: finalId,
+                update: ev.update,
+                type: ev.type,
+                name: ev.name,
+                user: ev.user,
+                createdAt: ev.createdAt // Keep original timestamps
+            }));
+
+            await Event.insertMany(branchedEvents);
+        }
 
         res.status(201).json(branchedCanvas);
     } catch (error) {
@@ -446,6 +486,70 @@ export const removeTimelineEventTag = async (req, res) => {
     }
 };
 
+// US4: Rollback Canvas
+export const rollbackCanvas = async (req, res) => {
+    try {
+        const { id: canvasId } = req.params;
+        const { eventId } = req.body;
+
+        if (!eventId) {
+            return res.status(400).json({ message: 'Target eventId is required' });
+        }
+
+        const canvas = await Canvas.findOne({ canvasId });
+        if (!canvas) {
+            return res.status(404).json({ message: 'Canvas not found' });
+        }
+
+        // Only owner or members can rollback
+        const isOwner = canvas.owner && req.user && canvas.owner.toString() === req.user._id.toString();
+        const isMember = canvas.members && req.user && canvas.members.some(m => m.user.toString() === req.user._id.toString());
+        const isGuestCanvas = canvasId.startsWith('guest-');
+
+        if (!isGuestCanvas && !isOwner && !isMember) {
+            return res.status(403).json({ message: 'Not authorized to rollback this canvas' });
+        }
+
+        const targetEvent = await Event.findOne({ _id: eventId, canvasId });
+        if (!targetEvent) {
+            return res.status(404).json({ message: 'Target event not found' });
+        }
+
+        // 1. Delete all events that occurred strictly *after* the target event
+        await Event.deleteMany({
+            canvasId,
+            createdAt: { $gt: targetEvent.createdAt }
+        });
+
+        // 2. Update the main DocumentState to the target event's state
+        canvas.documentState = targetEvent.update;
+        await canvas.save();
+
+        // 3. FORCE EVICT THE YDOC FROM WEBSOCKET SERVER MEMORY
+        // If we don't do this, y-websocket will just serve the cached "future" state 
+        // to re-connecting clients, entirely circumventing our database rollback.
+        const cachedDoc = docs.get(canvasId);
+        if (cachedDoc) {
+            console.log(`[Rollback] Evicting cached YDoc for canvas ${canvasId}`);
+            // Forcefully close all websockets connected to this specific document
+            for (const [conn] of cachedDoc.conns) {
+                conn.close();
+            }
+            // Remove the document from the y-websocket memory map
+            docs.delete(canvasId);
+        }
+
+        res.status(200).json({
+            message: 'Canvas rolled back successfully',
+            updatedState: canvas.documentState
+        });
+
+    } catch (error) {
+        console.error('Rollback Error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export default {
     createCanvas,
     getCanvas,
@@ -459,5 +563,6 @@ export default {
     getRelatedBranches,
     getTimeline,
     tagTimelineEvent,
-    removeTimelineEventTag
+    removeTimelineEventTag,
+    rollbackCanvas
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, X, Clock, Activity, Layout, Trash2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, X, Clock, Activity, Layout, Trash2, AlertTriangle, GitBranch, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import ReplayManager from '../Engine/managers/ReplayManager';
@@ -12,7 +13,10 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const [isLoading, setIsLoading] = useState(true);
     const [replayState, setReplayState] = useState({ layers: [], objects: {} });
+    const [showRollbackModal, setShowRollbackModal] = useState(false);
+    const [isBranching, setIsBranching] = useState(false);
     const replayManagerRef = useRef(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (isOpen && canvasId) {
@@ -90,6 +94,63 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
         } catch (err) {
             console.error('Failed to remove tag:', err);
             alert('Failed to remove tag.');
+        }
+    };
+
+    const handleRollbackConfirm = async () => {
+        if (!currentEvent) return;
+
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        try {
+            // CRITICAL: Destroy the local CRDT engine BEFORE sending the rollback request.
+            // If we don't do this, y-websocket will auto-reconnect and instantly push our 
+            // cached local "future" state back to the server, completely overriding the rollback!
+            if (engine && typeof engine.destroy === 'function') {
+                console.log('[Rollback] Destroying local CRDT engine to prevent future-state resync...');
+                engine.destroy();
+            }
+
+            await axios.post(`${API_BASE_URL}/canvas/${canvasId}/rollback`,
+                { eventId: currentEvent.id },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            // Close everything and force a full reload so the main canvas picks up the rolled-back state
+            onClose();
+            window.location.reload();
+        } catch (err) {
+            console.error('Failed to rollback canvas:', err);
+            alert('Failed to rollback. You might not have permission.');
+            setShowRollbackModal(false);
+        }
+    };
+
+    const handleRollbackBranch = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        setIsBranching(true);
+        try {
+            // Destroy local engine to be safe
+            if (engine && typeof engine.destroy === 'function') {
+                console.log('[Rollback] Destroying local CRDT engine before branching...');
+                engine.destroy();
+            }
+
+            const payload = currentEvent ? { eventId: currentEvent.id } : {};
+            const res = await axios.post(`${API_BASE_URL}/canvas/${canvasId}/branch`, payload, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            onClose();
+            // Force a full window location swap to ensure the new canvas engine spins up perfectly clean
+            window.location.href = `/canvas/${res.data.canvasId}`;
+        } catch (error) {
+            console.error('Failed to create branch:', error);
+            alert('Failed to branch canvas.');
+            setShowRollbackModal(false);
+            setIsBranching(false);
         }
     };
 
@@ -172,6 +233,15 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
                                     </button>
                                 </div>
                             )}
+
+                            {/* Rollback Button */}
+                            <button
+                                onClick={() => setShowRollbackModal(true)}
+                                className="mt-2 w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
+                            >
+                                <RotateCcw size={14} />
+                                Restore to this exact state
+                            </button>
                         </div>
                     )}
                 </div>
@@ -265,7 +335,67 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
             </div>
 
             {/* Visual focus hint for the canvas */}
-            <div className="absolute inset-0 border-[16px] border-indigo-500/5 pointer-events-none transition-opacity duration-1000" />
+            {isPlaying && (
+                <div className="absolute top-8 left-8 text-indigo-500 flex items-center gap-2 animate-in fade-in z-50 pointer-events-none bg-white/80 backdrop-blur px-4 py-2 rounded-2xl shadow-lg border border-indigo-100">
+                    <Activity size={16} className="animate-pulse" />
+                    <span className="text-xs font-black uppercase tracking-widest">Replaying Events</span>
+                </div>
+            )}
+
+            {/* Rollback Warning Modal Overlay */}
+            {showRollbackModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-slate-900/80 backdrop-blur-md animate-in fade-in pointer-events-auto"
+                        onClick={() => setShowRollbackModal(false)}
+                    />
+                    <div className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100 animate-in zoom-in-95 flex flex-col gap-6 pointer-events-auto">
+                        <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center self-center shrink-0 mb-2">
+                            <AlertTriangle size={32} />
+                        </div>
+                        <div className="text-center">
+                            <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-3">Irreversible Rollback</h2>
+                            <p className="text-slate-500 font-medium text-sm leading-relaxed">
+                                Rolling back will <strong className="text-red-500">permanently destroy</strong> all timeline events and drawing progress that occurred after this exact moment.
+                                <br /><br />
+                                We strongly recommend creating a <strong className="text-indigo-600">Branch</strong> instead, which will duplicate this state instantly and keep your current timeline perfectly safe.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col gap-3 mt-4">
+                            <button
+                                onClick={handleRollbackBranch}
+                                disabled={isBranching}
+                                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 active:scale-95 disabled:active:scale-100"
+                            >
+                                {isBranching ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Creating Branch...
+                                    </>
+                                ) : (
+                                    <>
+                                        <GitBranch size={16} />
+                                        Create Branch Instead (Recommended)
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                onClick={handleRollbackConfirm}
+                                className="w-full py-3.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-sm font-bold transition-all flex items-center justify-center shadow-sm active:scale-95"
+                            >
+                                Yes, Force Rollback
+                            </button>
+                            <button
+                                onClick={() => setShowRollbackModal(false)}
+                                className="w-full py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
