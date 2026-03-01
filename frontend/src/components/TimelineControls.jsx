@@ -41,7 +41,8 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
             setIsPlaying(false);
         } else {
             setIsPlaying(true);
-            replayManagerRef.current.play(playbackSpeed, () => {
+            replayManagerRef.current.setSpeed(playbackSpeed);
+            replayManagerRef.current.play(() => {
                 setIsPlaying(false);
             });
         }
@@ -159,7 +160,12 @@ const TimelineControls = ({ canvasId, engine, isOpen, onClose }) => {
                             {[0.5, 1, 2, 5].map(speed => (
                                 <button
                                     key={speed}
-                                    onClick={() => setPlaybackSpeed(speed)}
+                                    onClick={() => {
+                                        setPlaybackSpeed(speed);
+                                        if (replayManagerRef.current) {
+                                            replayManagerRef.current.setSpeed(speed);
+                                        }
+                                    }}
                                     className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${playbackSpeed === speed ? 'bg-white text-indigo-600 shadow-md scale-105' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200/50'}`}
                                 >
                                     {speed}x

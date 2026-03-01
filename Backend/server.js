@@ -79,6 +79,7 @@ setPersistence({
       if (!doc._hasEventLogger) {
         let batchTimeout = null;
         let isFirstEvent = true;
+        let lastSaveTime = 0;
 
         const saveBatchEvent = async (docState) => {
           try {
@@ -96,17 +97,27 @@ setPersistence({
         doc.on('update', async (update, origin) => {
           if (isFirstEvent) {
             isFirstEvent = false;
+            lastSaveTime = Date.now();
             const docState = Y.encodeStateAsUpdate(doc);
             saveBatchEvent(docState);
             return;
           }
 
-          // Debounce subsequent updates to log "every once in a while" as requested
-          clearTimeout(batchTimeout);
-          batchTimeout = setTimeout(() => {
+          // Throttle saves to max 4 times per second (250ms) to create smooth animation
+          const now = Date.now();
+          if (now - lastSaveTime > 250) {
+            lastSaveTime = now;
             const docState = Y.encodeStateAsUpdate(doc);
             saveBatchEvent(docState);
-          }, 1000);
+          } else {
+            // Also debounce to ensure the absolute final state is captured after drawing stops
+            clearTimeout(batchTimeout);
+            batchTimeout = setTimeout(() => {
+              lastSaveTime = Date.now();
+              const docState = Y.encodeStateAsUpdate(doc);
+              saveBatchEvent(docState);
+            }, 300);
+          }
         });
 
         doc._hasEventLogger = true;

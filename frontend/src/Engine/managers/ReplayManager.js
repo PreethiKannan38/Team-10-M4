@@ -10,6 +10,7 @@ class ReplayManager {
         this.events = [];
         this.currentIndex = -1;
         this.isReplaying = false;
+        this.playbackSpeed = 1;
         this._initDoc();
     }
 
@@ -73,11 +74,14 @@ class ReplayManager {
         if (this.onIndexChange) this.onIndexChange(this.currentIndex);
     }
 
+    setSpeed(newSpeed) {
+        this.playbackSpeed = newSpeed;
+    }
+
     /**
      * Plays the timeline sequentially
-     * @param {number} speed Multiplier for playback speed
      */
-    async play(speed = 1, onComplete) {
+    async play(onComplete) {
         if (this.isReplaying || this.currentIndex >= this.events.length - 1) {
             if (onComplete) onComplete();
             return;
@@ -91,10 +95,19 @@ class ReplayManager {
             const nextEvent = this.events[nextIndex];
 
             // Calculate delay based on actual timestamps
-            let delay = 100; // Default fallback delay
+            let delay = 50;
             if (currentEvent && nextEvent) {
                 const diff = new Date(nextEvent.timestamp) - new Date(currentEvent.timestamp);
-                delay = Math.min(Math.max(diff / speed, 50), 2000); // Bound between 50ms and 2s
+
+                // Base speedup factor: Proportional scaling so 30s of drawing plays in ~10s at 1x
+                const BASE_SPEEDUP = 3.0;
+
+                // Calculate the true scaled delay using the base factor AND the user's dynamic UI speed
+                const scaledDiff = diff / (BASE_SPEEDUP * this.playbackSpeed);
+
+                // We still cap the absolute maximum pause to 1000ms so coffee-breaks don't hang the replay,
+                // and set a minimum of 16ms (~60fps) to prevent locking the browser.
+                delay = Math.min(Math.max(scaledDiff, 16), 1000);
             }
 
             await new Promise(resolve => setTimeout(resolve, delay));
