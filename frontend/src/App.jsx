@@ -10,6 +10,8 @@ import Login from './components/Login';
 import Register from './components/Register';
 import LandingPage from './components/LandingPage';
 import Profile from './components/Profile';
+import ChatPanel from './components/ChatPanel';
+import JoinCanvas from './components/JoinCanvas';
 
 import axios from 'axios';
 import { API_BASE_URL } from './config';
@@ -53,6 +55,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [fillEnabled, setFillOn] = useState(false);
   const [canvasMetadata, setCanvasMetadata] = useState(null);
   const [branches, setBranches] = useState([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const [activeLayer, setActiveLayer] = useState('default-layer');
 
@@ -263,8 +266,17 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onBranchDelete={handleDeleteBranch}
           isTimelineOpen={isTimelineOpen}
           setIsTimelineOpen={setIsTimelineOpen}
+          isChatOpen={isChatOpen}
+          setIsChatOpen={setIsChatOpen}
         />
       </div>
+
+      <ChatPanel
+        engine={canvasEngineRef.current}
+        currentUser={currentUser}
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+      />
 
       <TimelineControls
         canvasId={canvasId}
@@ -407,10 +419,10 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/join/:canvasId" element={<JoinCanvas />} />
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
 }
-

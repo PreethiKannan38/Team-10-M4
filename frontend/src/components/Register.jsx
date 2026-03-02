@@ -23,7 +23,14 @@ const Register = () => {
             const res = await axios.post(`${API_BASE_URL}/auth/register`, formData);
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('user', JSON.stringify(res.data));
-            navigate('/dashboard');
+
+            const redirectUrl = localStorage.getItem('redirectAfterLogin');
+            if (redirectUrl) {
+                localStorage.removeItem('redirectAfterLogin');
+                navigate(redirectUrl);
+            } else {
+                navigate('/dashboard');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed. Try again.');
         } finally {

@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid'; // We might need to install uuid or just us
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { docs } = require('y-websocket/bin/utils');
+import jwt from 'jsonwebtoken';
 
 // @desc    Create a new canvas
 // @route   POST /api/canvas/create
@@ -550,6 +551,73 @@ export const rollbackCanvas = async (req, res) => {
     }
 };
 
+// US1/US5: Generate RBAC Invite Link
+export const generateLink = async (req, res) => {
+    try {
+        const { id: canvasId } = req.params;
+        const { role } = req.body; // 'viewer' or 'editor'
+
+        const canvas = await Canvas.findOne({ canvasId });
+        if (!canvas) return res.status(404).json({ message: 'Canvas not found' });
+
+        if (!canvas.owner.equals(req.user._id)) {
+            return res.status(403).json({ message: 'Only owner can generate invite links' });
+        }
+
+        const token = jwt.sign(
+            { canvasId, role: role || 'viewer' },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.status(200).json({ token, role: role || 'viewer' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// US1/US5: Join via RBAC Invite Link
+export const joinViaLink = async (req, res) => {
+    try {
+        const { id: canvasId } = req.params;
+        const { token } = req.body;
+
+        if (!token) return res.status(400).json({ message: 'Invite token is required' });
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        if (decoded.canvasId !== canvasId) {
+            return res.status(400).json({ message: 'Invalid invite link for this canvas' });
+        }
+
+        const canvas = await Canvas.findOne({ canvasId });
+        if (!canvas) return res.status(404).json({ message: 'Canvas not found' });
+
+        // Don't modify owner
+        if (canvas.owner.equals(req.user._id)) {
+            return res.status(200).json({ message: 'You are the owner', canvasId });
+        }
+
+        const memberIndex = canvas.members.findIndex(m => m.user.equals(req.user._id));
+
+        if (memberIndex === -1) {
+            canvas.members.push({ user: req.user._id, role: decoded.role });
+            await canvas.save();
+        } else if (canvas.members[memberIndex].role !== decoded.role && decoded.role === 'editor') {
+            // Upgrade role if link is editor and they are viewer
+            canvas.members[memberIndex].role = 'editor';
+            await canvas.save();
+        }
+
+        res.status(200).json({ message: 'Successfully joined canvas', canvasId });
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(400).json({ message: 'Invite link has expired' });
+        }
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export default {
     createCanvas,
     getCanvas,
@@ -564,5 +632,7 @@ export default {
     getTimeline,
     tagTimelineEvent,
     removeTimelineEventTag,
-    rollbackCanvas
+    rollbackCanvas,
+    generateLink,
+    joinViaLink
 };

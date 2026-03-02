@@ -39,6 +39,8 @@ export class CanvasEngineController {
 
     this.yObjects = this.doc.getMap('objects');
     this.yLayers = this.doc.getArray('layers');
+    // === CHAT ===
+    this.yChat = this.doc.getArray('chatMessages');
 
     // === CORE STATE ===
     this.state = {
@@ -259,6 +261,20 @@ export class CanvasEngineController {
 
   canEdit() {
     return this.state.userRole !== 'viewer';
+  }
+
+  // --- CHAT API ---
+  addChatMessage(message, user) {
+    if (!message || !message.trim()) return;
+    const author = user?.name || 'Anonymous';
+    this.doc.transact(() => {
+      this.yChat.push([{
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+        text: message,
+        author,
+        timestamp: new Date().toISOString()
+      }]);
+    });
   }
 
   cancelCurrentTool() {
