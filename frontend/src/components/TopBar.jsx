@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus, Trash2, Clock, Tag } from 'lucide-react';
+import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus, Trash2, Clock, Tag, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 
@@ -17,7 +17,9 @@ export default function TopBar({
   onBranch,
   onBranchDelete,
   isTimelineOpen,
-  setIsTimelineOpen
+  setIsTimelineOpen,
+  isChatOpen,
+  setIsChatOpen
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -265,8 +267,12 @@ export default function TopBar({
             <Clock className="w-4 h-4" />
           </button>
 
-          <button className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
-            <Bell className="w-4 h-4" />
+          <button
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${isChatOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+            title="Room Chat"
+          >
+            <MessageSquare className="w-4 h-4" />
           </button>
 
           <div className="relative flex items-center gap-2" ref={shareRef}>

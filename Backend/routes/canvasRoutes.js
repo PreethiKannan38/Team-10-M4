@@ -19,5 +19,7 @@ router.get('/:id/timeline', protect, canvasController.getTimeline);
 router.post('/:id/tag', protect, canvasController.tagTimelineEvent);
 router.delete('/:id/tag/:eventId', protect, canvasController.removeTimelineEventTag);
 router.post('/:id/rollback', protect, canvasController.rollbackCanvas);
+router.post('/:id/generate-link', protect, canvasController.generateLink);
+router.post('/:id/join-via-link', protect, canvasController.joinViaLink);
 
 export default router;
