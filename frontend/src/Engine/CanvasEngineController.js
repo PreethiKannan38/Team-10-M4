@@ -15,6 +15,8 @@ import { CoordinateMapper } from './utils/CoordinateMapper';
 import { BoundsCalculation } from './utils/BoundsCalculation';
 import ToolManager from './ToolManager';
 import { WS_BASE_URL } from '../config';
+import { dispatchCollabEvent } from './collabEventDispatcher';
+
 
 export class CanvasEngineController {
   constructor(canvas, container, roomId = 'drawing-room', userRole = 'viewer') {
@@ -67,7 +69,12 @@ export class CanvasEngineController {
       userRole: userRole,
       undoPreview: false,
       redoPreview: false,
+      authorshipHighlighting: false,
+      hoveredObjectId: null,
     };
+
+    // Comment counts cache: { objectId -> count }
+    this.commentCounts = {};
 
     // === MANAGER INITIALIZATION ===
     this.sceneManager = new SceneManager();
@@ -146,12 +153,75 @@ export class CanvasEngineController {
     this.dispatchStateChange('multiSelection', selectedIds);
   }
 
+  getSelectedObjectId() {
+    return this.state.selectedObjectId;
+  }
+
+
   setupYjsListeners() {
     this.yObjects.observe(() => {
       this.syncFromYjs();
     });
     this.yLayers.observe(() => {
       this.syncFromYjs();
+    });
+
+    this.doc.getMap('sessionMeta').observe((event) => {
+      if (event.keysChanged.has('sessionWarning')) {
+        const warning = this.doc.getMap('sessionMeta').get('sessionWarning');
+        if (warning && warning.remaining !== undefined) {
+          dispatchCollabEvent('SESSION_WARNING', { remaining: warning.remaining });
+        }
+      }
+    });
+
+    this.knownUsers = new Map();
+    this.awareness.on('change', (changes) => {
+      const states = this.awareness.getStates();
+
+      changes.added.forEach(clientId => {
+        if (clientId === this.doc.clientID) return;
+        const state = states.get(clientId);
+        if (state && state.user) {
+          this.knownUsers.set(clientId, state.user);
+          dispatchCollabEvent('USER_JOINED', state.user);
+        }
+      });
+
+      changes.removed.forEach(clientId => {
+        if (clientId === this.doc.clientID) return;
+        const user = this.knownUsers.get(clientId);
+        if (user) {
+          dispatchCollabEvent('USER_LEFT', user);
+          this.knownUsers.delete(clientId);
+        }
+      });
+
+      changes.updated.forEach(clientId => {
+        if (clientId === this.doc.clientID) return;
+        const state = states.get(clientId);
+
+        // Handle deferred/updated joins
+        if (state && state.user && !this.knownUsers.has(clientId)) {
+          this.knownUsers.set(clientId, state.user);
+          dispatchCollabEvent('USER_JOINED', state.user);
+        }
+
+        // Check for Object Locks (Edit Alerts - User Story 2)
+        // Only fire once per 30 seconds per remote user to prevent toast spam
+        if (state && state.selection && state.selection.length > 0) {
+          const overlap = state.selection.some(id => this.state.selectedObjectIds.includes(id));
+          if (overlap && state.user) {
+            const now = Date.now();
+            const lastAlert = this._objectLockCooldowns?.get(clientId) || 0;
+            if (now - lastAlert > 30000) {
+              if (!this._objectLockCooldowns) this._objectLockCooldowns = new Map();
+              this._objectLockCooldowns.set(clientId, now);
+              dispatchCollabEvent('OBJECT_LOCKED', state.user);
+            }
+          }
+        }
+      });
     });
   }
 
@@ -263,15 +333,25 @@ export class CanvasEngineController {
     return this.state.userRole !== 'viewer';
   }
 
+  setAuthorshipMode(enabled) {
+    this.state.authorshipHighlighting = enabled;
+    this.render();
+  }
+
   // --- CHAT API ---
   addChatMessage(message, user) {
+    this.addChatMessageExtended(message, user, null);
+  }
+
+  addChatMessageExtended(message, user, objectId) {
     if (!message || !message.trim()) return;
-    const author = user?.name || 'Anonymous';
+    const author = user?.name || user?.username || 'Anonymous';
     this.doc.transact(() => {
       this.yChat.push([{
         id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
         text: message,
         author,
+        objectId,
         timestamp: new Date().toISOString()
       }]);
     });
@@ -354,7 +434,9 @@ export class CanvasEngineController {
         metadata: {
           ...object.metadata,
           creatorId: creator.id || 'unknown',
-          creatorName: creator.name || 'Unknown'
+          creatorName: creator.name || 'Unknown',
+          creatorColor: creator.color || '#94A3B8',
+          createdAt: new Date().toISOString()
         }
       };
 
@@ -544,6 +626,19 @@ export class CanvasEngineController {
     this.pointerX = coords.x;
     this.pointerY = coords.y;
 
+    // === CURSOR PRESENCE: Broadcast local cursor position to all peers ===
+    this.awareness.setLocalStateField('cursor', {
+      x: coords.x,
+      y: coords.y
+    });
+
+    // === HOVER DETECTION for Author Tooltip ===
+    if (!this.state.isDrawing) {
+      const objs = this.sceneManager.getObjectsAtPoint(coords.x, coords.y);
+      const topObj = objs.length > 0 ? objs[objs.length - 1] : null;
+      this.state.hoveredObjectId = topObj ? topObj.id : null;
+    }
+
     if (this.state.isPanning) {
       const dx = event.clientX - this.state.lastMousePos.x;
       const dy = event.clientY - this.state.lastMousePos.y;
@@ -628,8 +723,14 @@ export class CanvasEngineController {
       this.currentTool.renderPreview(this.ctx, this);
     }
 
+    // Render Author Tooltip on hovered object
+    this.renderAuthorTooltip();
+
     // Render Remote Selections
     this.renderRemoteSelections();
+
+    // Render Remote Cursors
+    this.renderRemoteCursors();
 
     if (this.state.undoPreview) {
       this._renderPreview('undo');
@@ -685,6 +786,217 @@ export class CanvasEngineController {
     this.ctx.restore();
   }
 
+  // === FEATURE 1: LIVE REMOTE CURSORS ===
+  renderRemoteCursors() {
+    const states = this.awareness.getStates();
+
+    states.forEach((state, clientId) => {
+      if (clientId === this.doc.clientID) return;
+      const user = state.user;
+      const cursor = state.cursor;
+      if (!user || !cursor) return;
+
+      const color = user.color || '#F59E0B';
+      const name = user.name || 'User';
+      const x = cursor.x;
+      const y = cursor.y;
+
+      this.ctx.save();
+
+      // Draw cursor arrow
+      this.ctx.fillStyle = color;
+      this.ctx.strokeStyle = '#FFFFFF';
+      this.ctx.lineWidth = 1.5 / this.state.zoom;
+      this.ctx.beginPath();
+      const s = 12 / this.state.zoom; // scale cursor with zoom
+      this.ctx.moveTo(x, y);
+      this.ctx.lineTo(x, y + s * 1.5);
+      this.ctx.lineTo(x + s * 0.45, y + s * 1.1);
+      this.ctx.lineTo(x + s * 0.95, y + s * 1.5);
+      this.ctx.lineTo(x + s * 1.15, y + s * 1.25);
+      this.ctx.lineTo(x + s * 0.65, y + s * 0.85);
+      this.ctx.lineTo(x + s * 1.1, y + s * 0.45);
+      this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.stroke();
+
+      // Draw name label pill
+      const fontSize = 11 / this.state.zoom;
+      const padding = 4 / this.state.zoom;
+      this.ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+      const textW = this.ctx.measureText(name).width;
+      const pillX = x + s * 0.8;
+      const pillY = y + s * 1.5 + padding;
+      const pillH = fontSize + padding * 2;
+      const pillW = textW + padding * 3;
+      const radius = pillH / 2;
+
+      // Rounded rect background
+      this.ctx.beginPath();
+      this.ctx.moveTo(pillX + radius, pillY);
+      this.ctx.lineTo(pillX + pillW - radius, pillY);
+      this.ctx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + radius, radius);
+      this.ctx.arcTo(pillX + pillW, pillY + pillH, pillX + pillW - radius, pillY + pillH, radius);
+      this.ctx.lineTo(pillX + radius, pillY + pillH);
+      this.ctx.arcTo(pillX, pillY + pillH, pillX, pillY + pillH - radius, radius);
+      this.ctx.arcTo(pillX, pillY, pillX + radius, pillY, radius);
+      this.ctx.closePath();
+      this.ctx.fillStyle = color;
+      this.ctx.fill();
+
+      // Name text
+      this.ctx.fillStyle = '#FFFFFF';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillText(name, pillX + padding * 1.5, pillY + pillH / 2);
+
+      this.ctx.restore();
+    });
+  }
+
+  // === FEATURE 2: AUTHOR TOOLTIP ON HOVER ===
+  renderAuthorTooltip() {
+    const hoveredId = this.state.hoveredObjectId;
+    if (!hoveredId) return;
+
+    const obj = this.yObjects.get(hoveredId);
+    if (!obj || !obj.metadata || !obj.metadata.creatorName) return;
+    if (!obj.bounds) return;
+
+    const meta = obj.metadata;
+    const creatorName = meta.creatorName || 'Unknown';
+    const color = meta.creatorColor || '#94A3B8';
+
+    // Calculate time elapsed
+    let timeStr = '';
+    if (meta.createdAt) {
+      const elapsed = Date.now() - new Date(meta.createdAt).getTime();
+      const mins = Math.floor(elapsed / 60000);
+      if (mins < 1) timeStr = 'just now';
+      else if (mins < 60) timeStr = `${mins}m ago`;
+      else if (mins < 1440) timeStr = `${Math.floor(mins / 60)}h ago`;
+      else timeStr = `${Math.floor(mins / 1440)}d ago`;
+    }
+
+    this.ctx.save();
+
+    const fontSize = 11 / this.state.zoom;
+    const padding = 5 / this.state.zoom;
+    this.ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+
+    const label = timeStr ? `${creatorName} • ${timeStr}` : `Created by ${creatorName}`;
+    const textW = this.ctx.measureText(label).width;
+    const tooltipW = textW + padding * 4;
+    const tooltipH = fontSize + padding * 3;
+    const tooltipX = obj.bounds.x + obj.bounds.width / 2 - tooltipW / 2;
+    const tooltipY = obj.bounds.y - tooltipH - 8 / this.state.zoom;
+
+    // Shadow
+    this.ctx.shadowColor = 'rgba(0,0,0,0.15)';
+    this.ctx.shadowBlur = 8 / this.state.zoom;
+    this.ctx.shadowOffsetY = 2 / this.state.zoom;
+
+    // Background pill
+    const r = tooltipH / 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(tooltipX + r, tooltipY);
+    this.ctx.lineTo(tooltipX + tooltipW - r, tooltipY);
+    this.ctx.arcTo(tooltipX + tooltipW, tooltipY, tooltipX + tooltipW, tooltipY + r, r);
+    this.ctx.arcTo(tooltipX + tooltipW, tooltipY + tooltipH, tooltipX + tooltipW - r, tooltipY + tooltipH, r);
+    this.ctx.lineTo(tooltipX + r, tooltipY + tooltipH);
+    this.ctx.arcTo(tooltipX, tooltipY + tooltipH, tooltipX, tooltipY + tooltipH - r, r);
+    this.ctx.arcTo(tooltipX, tooltipY, tooltipX + r, tooltipY, r);
+    this.ctx.closePath();
+    this.ctx.fillStyle = '#1E293B';
+    this.ctx.fill();
+
+    // Color dot
+    this.ctx.shadowColor = 'transparent';
+    this.ctx.shadowBlur = 0;
+    const dotR = 3 / this.state.zoom;
+    this.ctx.beginPath();
+    this.ctx.arc(tooltipX + padding * 2 + dotR, tooltipY + tooltipH / 2, dotR, 0, Math.PI * 2);
+    this.ctx.fillStyle = color;
+    this.ctx.fill();
+
+    // Text
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(label, tooltipX + padding * 2 + dotR * 2 + padding, tooltipY + tooltipH / 2);
+
+    this.ctx.restore();
+  }
+
+  // === FEATURE 3: COMMENT COUNT INDICATORS ===
+  setCommentCounts(counts) {
+    // counts: { objectId: number, ... }
+    this.commentCounts = counts || {};
+    this.render();
+  }
+
+  renderCommentIndicators() {
+    if (!this.commentCounts || Object.keys(this.commentCounts).length === 0) return;
+
+    Object.entries(this.commentCounts).forEach(([objectId, count]) => {
+      if (count <= 0) return;
+      const obj = this.yObjects.get(objectId);
+      if (!obj || !obj.bounds) return;
+
+      this.ctx.save();
+
+      // Position: top-right corner of the object bounding box
+      const bx = obj.bounds.x + obj.bounds.width + 2 / this.state.zoom;
+      const by = obj.bounds.y - 4 / this.state.zoom;
+
+      const fontSize = 9 / this.state.zoom;
+      const padding = 3 / this.state.zoom;
+      const iconSize = 10 / this.state.zoom;
+
+      // Build label
+      const label = `${count}`;
+      this.ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+      const textW = this.ctx.measureText(label).width;
+      const badgeW = iconSize + textW + padding * 3;
+      const badgeH = fontSize + padding * 2.5;
+
+      // Badge background
+      const r = badgeH / 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(bx + r, by);
+      this.ctx.lineTo(bx + badgeW - r, by);
+      this.ctx.arcTo(bx + badgeW, by, bx + badgeW, by + r, r);
+      this.ctx.arcTo(bx + badgeW, by + badgeH, bx + badgeW - r, by + badgeH, r);
+      this.ctx.lineTo(bx + r, by + badgeH);
+      this.ctx.arcTo(bx, by + badgeH, bx, by + badgeH - r, r);
+      this.ctx.arcTo(bx, by, bx + r, by, r);
+      this.ctx.closePath();
+      this.ctx.fillStyle = '#6366F1';
+      this.ctx.fill();
+
+      // Chat bubble icon (simplified)
+      const ix = bx + padding * 1.2;
+      const iy = by + badgeH / 2;
+      const is = iconSize * 0.4;
+      this.ctx.strokeStyle = '#FFFFFF';
+      this.ctx.lineWidth = 1 / this.state.zoom;
+      this.ctx.beginPath();
+      this.ctx.roundRect(ix - is, iy - is, is * 2, is * 1.6, is * 0.3);
+      this.ctx.stroke();
+      // Tail
+      this.ctx.beginPath();
+      this.ctx.moveTo(ix - is * 0.3, iy + is * 0.6);
+      this.ctx.lineTo(ix - is * 0.6, iy + is * 1.1);
+      this.ctx.lineTo(ix + is * 0.1, iy + is * 0.6);
+      this.ctx.stroke();
+
+      // Count text
+      this.ctx.fillStyle = '#FFFFFF';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillText(label, ix + is + padding, by + badgeH / 2);
+
+      this.ctx.restore();
+    });
+  }
+
   renderGrid() {
     const gridSize = 50;
 
@@ -726,13 +1038,34 @@ export class CanvasEngineController {
     const isSelected = this.state.selectedObjectId === id;
 
     this.ctx.globalAlpha = style?.opacity || 1.0;
-    this.ctx.strokeStyle = isSelected ? '#2563EB' : (style?.color || '#000000');
-    this.ctx.lineWidth = isSelected ? (style?.width || 1) + 2 : (style?.width || 1);
+
+    // Authorship Highlighting (US6)
+    if (this.state.authorshipHighlighting && obj.metadata?.creatorColor) {
+      this.ctx.shadowColor = obj.metadata.creatorColor;
+      this.ctx.shadowBlur = 35; // Increased blur for a stronger glow
+      this.ctx.shadowOffsetX = 0;
+      this.ctx.shadowOffsetY = 0;
+    } else {
+      this.ctx.shadowColor = 'transparent';
+      this.ctx.shadowBlur = 0;
+      this.ctx.shadowOffsetX = 0;
+      this.ctx.shadowOffsetY = 0;
+    }
+
+    this.ctx.strokeStyle = (this.state.authorshipHighlighting && obj.metadata?.creatorColor) ? obj.metadata.creatorColor : (isSelected ? '#2563EB' : (style?.color || '#000000'));
+    // If authorship highlighting is ON, double the line width so the color really pops out
+    let baseWidth = isSelected ? (style?.width || 1) + 3 : (style?.width || 1);
+    this.ctx.lineWidth = (this.state.authorshipHighlighting && obj.metadata?.creatorColor) ? baseWidth + 2 : baseWidth;
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
     this.ctx.fillStyle = style?.fillColor || 'transparent';
 
     this.ctx.save();
+
+    // If highlighting, redraw it twice to make the shadow super intense (like a neon glow)
+    if (this.state.authorshipHighlighting && obj.metadata?.creatorColor) {
+      this.ctx.globalAlpha = 1.0;
+    }
     if (geometry.rotation) {
       const centerX = geometry.x !== undefined ? geometry.x + (geometry.width / 2) :
         (geometry.cx !== undefined ? geometry.cx :
