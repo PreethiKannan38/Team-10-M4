@@ -201,7 +201,8 @@ function CanvasWorkspace({ canvasEngineRef }) {
         clearCanvas();
         break;
       case 'export':
-        canvasEngineRef.current.exportToImage();
+        // Toolbar 'export' button: prompt for format choice
+        handleExport();
         break;
       case 'tag':
         handleTagState();
@@ -211,6 +212,24 @@ function CanvasWorkspace({ canvasEngineRef }) {
         break;
       default:
         break;
+    }
+  };
+
+  /**
+   * Prompts the user to choose between PNG and JSON export formats.
+   * Triggered by both the TopBar Download button and the Toolbar Export tool.
+   * OK  → exports the canvas as a PNG image (canvas.png)
+   * Cancel → exports the full project as a JSON file (canvas-project.json)
+   */
+  const handleExport = () => {
+    if (!canvasEngineRef.current) return;
+    const wantsPNG = window.confirm(
+      'Export canvas\n\n• Click OK to download as PNG image\n• Click Cancel to download as JSON project file'
+    );
+    if (wantsPNG) {
+      canvasEngineRef.current.exportPNG();
+    } else {
+      canvasEngineRef.current.exportProjectJSON();
     }
   };
 
@@ -260,7 +279,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout}
           userRole={userRole}
-          onExport={() => handleAction('export')}
+          onExport={handleExport}
           branches={branches}
           onBranch={handleBranch}
           onBranchDelete={handleDeleteBranch}

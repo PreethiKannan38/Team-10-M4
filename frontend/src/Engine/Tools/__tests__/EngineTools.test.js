@@ -61,6 +61,7 @@ describe('Engine Tools Unit Tests', () => {
             executeCommand: vi.fn(),
             getObject: vi.fn(),
             setSelection: vi.fn(),
+            setSelectionAwareness: vi.fn((ids) => { mockEngine.state.selectedObjectIds = ids; }),
             setBrushOptions: vi.fn(),
             dispatchStateChange: vi.fn(),
             _renderArrow: vi.fn()
@@ -144,12 +145,14 @@ describe('Engine Tools Unit Tests', () => {
                 geometry: { x: 0, y: 0, width: 20, height: 20 }
             };
             mockEngine.sceneManager.getObjectsAtPoint.mockReturnValue([mockObj]);
+            // SelectTool calls engine.getObject(id) to store geometry for drag tracking
+            mockEngine.getObject.mockReturnValue(mockObj);
 
             const tool = new SelectTool(mockEngine);
             tool.onPointerDown({ canvasX: 10, canvasY: 10 }, mockEngine);
 
-            expect(mockEngine.state.selectedObjectId).toBe('obj-1');
-            expect(mockEngine.dispatchStateChange).toHaveBeenCalledWith('selection', 'obj-1');
+            expect(mockEngine.state.selectedObjectIds).toContain('obj-1');
+            expect(mockEngine.setSelectionAwareness).toHaveBeenCalledWith(['obj-1']);
         });
     });
 

@@ -112,6 +112,9 @@ export class CanvasEngineController {
     // Feedback Indicator State
     this.feedbackTimeout = null;
     this.feedbackActive = false;
+
+    // Cursor Activity State
+    this.idleTimer = null;
   }
 
   showFeedback() {
@@ -127,10 +130,14 @@ export class CanvasEngineController {
   setLocalUser(user) {
     if (!user) return;
     const userId = user.id || user._id || 'unknown';
-    this.awareness.setLocalStateField('user', {
-      name: user.name || 'Anonymous',
-      color: user.color || '#217BF4',
-      id: userId
+    this.awareness.setLocalState({
+      ...this.awareness.getLocalState(),
+      user: {
+        name: user.name || 'Anonymous',
+        color: user.color || '#217BF4',
+        id: userId
+      },
+      status: 'active'
     });
     console.log(`[Engine] Local user set: ${user.name} (${userId})`);
   }
@@ -381,6 +388,44 @@ export class CanvasEngineController {
     link.click();
   }
 
+  /**
+   * Export canvas as PNG image.
+   * Named alias for exportToImage() per feature spec.
+   */
+  exportPNG() {
+    this.exportToImage();
+  }
+
+  /**
+   * Export the full project state as a downloadable JSON file.
+   * Serializes all objects, layers, and canvas metadata.
+   * File name: canvas-project.json
+   */
+  exportProjectJSON() {
+    const data = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      metadata: {
+        canvasId: this.provider.roomname || 'unknown',
+      },
+      objects: this.yObjects.toJSON(),
+      layers: this.yLayers.toArray(),
+    };
+
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.download = 'canvas-project.json';
+    link.href = url;
+    link.click();
+
+    // Clean up the temporary object URL
+    URL.revokeObjectURL(url);
+    console.log('[Engine] Project exported as JSON');
+  }
+
   removeObject(objectId) {
     if (!this.canEdit()) return;
     const obj = this.yObjects.get(objectId);
@@ -544,6 +589,18 @@ export class CanvasEngineController {
     this.pointerX = coords.x;
     this.pointerY = coords.y;
 
+    // Update awareness for cursor tracking
+    this.awareness.setLocalStateField('cursor', coords);
+    this.awareness.setLocalStateField('status', 'active');
+
+    // Clear existing idle timer
+    clearTimeout(this.idleTimer);
+
+    // Set new timer to mark as idle after 5 seconds of inactivity
+    this.idleTimer = setTimeout(() => {
+      this.awareness.setLocalStateField('status', 'idle');
+    }, 5000);
+
     if (this.state.isPanning) {
       const dx = event.clientX - this.state.lastMousePos.x;
       const dy = event.clientY - this.state.lastMousePos.y;
@@ -631,6 +688,9 @@ export class CanvasEngineController {
     // Render Remote Selections
     this.renderRemoteSelections();
 
+    // Render Remote Cursors (Ensure it occurs after canvas elements and selections)
+    this.renderRemoteCursors();
+
     if (this.state.undoPreview) {
       this._renderPreview('undo');
     }
@@ -643,7 +703,6 @@ export class CanvasEngineController {
 
   renderRemoteSelections() {
     const states = this.awareness.getStates();
-    const currentUser = this.awareness.getLocalState();
 
     states.forEach((state, clientId) => {
       if (clientId === this.doc.clientID) return; // Skip self
@@ -660,6 +719,71 @@ export class CanvasEngineController {
         });
       }
     });
+  }
+
+  renderRemoteCursors() {
+    for (const [clientId, state] of this.awareness.getStates()) {
+      if (clientId === this.awareness.clientID) continue; // Skip self
+
+      const user = state.user;
+      const cursor = state.cursor;
+      const status = state.status;
+
+      if (user && cursor) {
+        this._drawRemoteCursor(cursor, user.color || '#F59E0B', user.name || 'User', status || 'active');
+      }
+    }
+  }
+
+  _drawRemoteCursor(cursor, color, name, status) {
+    if (status === 'offline') return;
+
+    this.ctx.save();
+
+    // Cursor coordinates are in canvas space, no need to transform again
+    // since we're currently inside the pan/zoom transformation matrix
+    const x = cursor.x;
+    const y = cursor.y;
+
+    // Draw Custom Cursor Pointer
+    this.ctx.globalAlpha = status === 'idle' ? 0.4 : 1.0;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x, y);
+    // Draw a stylized arrow cursor scaled by zoom level to keep constant screen size
+    const scale = 1 / this.state.zoom;
+    this.ctx.lineTo(x + 12 * scale, y + 12 * scale);
+    this.ctx.lineTo(x + 5 * scale, y + 12 * scale);
+    this.ctx.lineTo(x, y + 17 * scale);
+    this.ctx.closePath();
+
+    this.ctx.fillStyle = color;
+    this.ctx.fill();
+    this.ctx.strokeStyle = '#FFFFFF';
+    this.ctx.lineWidth = 1.5 * scale;
+    this.ctx.stroke();
+
+    // Reset opacity so the Name Tag remains fully visible
+    this.ctx.globalAlpha = 1.0;
+
+    // Draw Name Tag
+    const fontSize = 12 * scale;
+    this.ctx.font = `bold ${fontSize}px sans-serif`;
+    const textWidth = this.ctx.measureText(name).width;
+    const padding = 4 * scale;
+
+    const tagX = x + 10 * scale;
+    const tagY = y + 16 * scale;
+
+    this.ctx.fillStyle = color;
+    this.ctx.beginPath();
+    this.ctx.roundRect(tagX, tagY, textWidth + padding * 2, fontSize + padding * 2, 4 * scale);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.textBaseline = 'bottom';
+    this.ctx.fillText(name, tagX + padding, tagY + fontSize + padding);
+
+    this.ctx.restore();
   }
 
   _drawRemoteSelection(bounds, color, name) {
