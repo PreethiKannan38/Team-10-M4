@@ -97,7 +97,7 @@ export class SceneManager {
   getObjectsInBounds(bounds) {
     return this.objectOrder
       .map(id => this.objects[id])
-      .filter(obj => obj && obj.bounds && this.boundsOverlap(obj.bounds, bounds));
+      .filter(obj => obj && !obj.locked && obj.bounds && this.boundsOverlap(obj.bounds, bounds));
   }
 
   /**
@@ -110,7 +110,7 @@ export class SceneManager {
     return this.objectOrder
       .map(id => this.objects[id])
       .filter(obj => {
-        if (!obj || !obj.visible || !obj.bounds) return false;
+        if (!obj || obj.locked || !obj.visible || !obj.bounds) return false;
         
         // Simple bounds check first
         return (
