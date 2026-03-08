@@ -41,6 +41,10 @@ const canvasSchema = new mongoose.Schema({
     },
     parentId: {
         type: String,
+    },
+    expiresAt: {
+        type: Date,
+        default: null, // If set, acts as a session expiry
     }
 }, { collection: 'canvas', timestamps: true });
 
