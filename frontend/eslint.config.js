@@ -27,7 +27,9 @@ export default defineConfig([
       'react-hooks/exhaustive-deps': 'warn',
       'react-hooks/immutability': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
-      'no-undef': 'warn'
+      'react-hooks/purity': 'warn',
+      'no-undef': 'warn',
+      'no-empty': 'warn'
     },
   },
 ])
