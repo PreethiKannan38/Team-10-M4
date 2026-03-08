@@ -20,9 +20,12 @@ const Y = require('yjs');
 const { setupWSConnection, setPersistence } = require('y-websocket/bin/utils');
 import Canvas from './models/Canvas.js';
 import Event from './models/Event.js';
+import Comment from './models/Comment.js';
 import authRoutes from './routes/authRoutes.js';
 import canvasRoutes from './routes/canvasRoutes.js';
 import snapshotRoutes from './routes/snapshotRoutes.js';
+import commentRoutes from './routes/commentRoutes.js';
+import { Server } from "socket.io";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,6 +38,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/canvas', canvasRoutes);
 app.use('/api/snapshots', snapshotRoutes);
+app.use('/api/comments', commentRoutes);
 
 // MongoDB Connection
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/Canvas';
@@ -146,7 +150,30 @@ setPersistence({
         });
       }
 
+      if (!doc._hasSessionTimer) {
+        doc._hasSessionTimer = true;
+        const sessionMeta = doc.getMap('sessionMeta');
 
+        if (savedCanvas && savedCanvas.expiresAt) {
+          const expiryTime = new Date(savedCanvas.expiresAt).getTime();
+
+          const intervalId = setInterval(() => {
+            const now = Date.now();
+            const remainingSeconds = Math.round((expiryTime - now) / 1000);
+
+            // Trigger 5 minutes, 1 minute, and 10 seconds warnings
+            if (remainingSeconds === 300 || remainingSeconds === 60 || remainingSeconds === 10) {
+              sessionMeta.set('sessionWarning', { remaining: remainingSeconds, ts: now });
+            }
+
+            if (remainingSeconds <= 0) {
+              clearInterval(intervalId);
+              // Fire final termination
+              sessionMeta.set('sessionWarning', { remaining: 0, ts: now });
+            }
+          }, 1000);
+        }
+      }
     } catch (err) {
       console.error(`[Yjs] Error loading document ${docName}:`, err);
     } finally {
@@ -203,7 +230,52 @@ setPersistence({
 // HTTP + WebSocket Server Setup
 // ----------------------------------------------------
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+
+// Setup Socket.IO for chat/comments
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+io.on('connection', (socket) => {
+  socket.on('join_session', (sessionId) => {
+    socket.join(sessionId);
+  });
+
+  socket.on('add_object_comment', async (data) => {
+    try {
+      const { sessionId, objectId, message, user } = data;
+      const newComment = await Comment.create({
+        sessionId,
+        objectId,
+        message,
+        user
+      });
+
+      // Broadcast to everyone in the room
+      io.to(sessionId).emit('object_comment_added', newComment);
+    } catch (error) {
+      console.error('Socket error adding comment:', error);
+    }
+  });
+});
+
+// Setup Yjs WebSocket
+const wss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (request, socket, head) => {
+  if (request.url.startsWith('/socket.io/')) {
+    // Socket.IO engine will automatically handle this if attached to `server`.
+    // We don't need to do anything, because socket.io intercepts it internally.
+  } else {
+    // Hand over to Y-Websocket
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  }
+});
 
 wss.on('connection', (conn, req) => {
   setupWSConnection(conn, req);

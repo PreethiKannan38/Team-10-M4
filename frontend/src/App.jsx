@@ -12,6 +12,7 @@ import LandingPage from './components/LandingPage';
 import Profile from './components/Profile';
 import ChatPanel from './components/ChatPanel';
 import JoinCanvas from './components/JoinCanvas';
+import NotificationSystem from './components/NotificationSystem';
 
 import axios from 'axios';
 import { API_BASE_URL } from './config';
@@ -56,6 +57,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
   const [canvasMetadata, setCanvasMetadata] = useState(null);
   const [branches, setBranches] = useState([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isAuthorshipMode, setIsAuthorshipMode] = useState(false);
 
   const [activeLayer, setActiveLayer] = useState('default-layer');
 
@@ -132,6 +134,14 @@ function CanvasWorkspace({ canvasEngineRef }) {
       fetchRelatedBranches(); // Refresh branch list to show new name
     } catch (err) {
       console.error('Error updating canvas name:', err);
+    }
+  };
+
+  const handleAuthorshipToggle = () => {
+    const newVal = !isAuthorshipMode;
+    setIsAuthorshipMode(newVal);
+    if (canvasEngineRef.current) {
+      canvasEngineRef.current.setAuthorshipMode(newVal);
     }
   };
 
@@ -268,10 +278,13 @@ function CanvasWorkspace({ canvasEngineRef }) {
           setIsTimelineOpen={setIsTimelineOpen}
           isChatOpen={isChatOpen}
           setIsChatOpen={setIsChatOpen}
+          isAuthorshipMode={isAuthorshipMode}
+          onAuthorshipToggle={handleAuthorshipToggle}
         />
       </div>
 
       <ChatPanel
+        canvasId={canvasId}
         engine={canvasEngineRef.current}
         currentUser={currentUser}
         isOpen={isChatOpen}
@@ -423,6 +436,7 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <NotificationSystem />
     </Router>
   );
 }

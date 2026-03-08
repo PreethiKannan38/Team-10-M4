@@ -19,7 +19,9 @@ export default function TopBar({
   isTimelineOpen,
   setIsTimelineOpen,
   isChatOpen,
-  setIsChatOpen
+  setIsChatOpen,
+  isAuthorshipMode,
+  onAuthorshipToggle
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -257,6 +259,18 @@ export default function TopBar({
           >
             <Tag className="w-3.5 h-3.5" />
             <span>Tag</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (onAuthorshipToggle) onAuthorshipToggle();
+            }}
+            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${isAuthorshipMode ? 'bg-amber-500 text-white shadow-lg shadow-amber-100' : 'text-slate-400 hover:text-amber-500 hover:bg-amber-50'}`}
+            title="Highlight Authorship (Who DREW what?)"
+          >
+            <div className={`w-4 h-4 rounded-full border-2 ${isAuthorshipMode ? 'border-white' : 'border-current'} flex items-center justify-center`}>
+              <div className="w-1.5 h-1.5 rounded-full bg-current opacity-70"></div>
+            </div>
           </button>
 
           <button
