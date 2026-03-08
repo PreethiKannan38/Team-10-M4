@@ -28,7 +28,7 @@ import commentRoutes from './routes/commentRoutes.js';
 import { Server } from "socket.io";
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5002;
 
 // Middleware
 app.use(cors());
@@ -40,26 +40,60 @@ app.use('/api/canvas', canvasRoutes);
 app.use('/api/snapshots', snapshotRoutes);
 app.use('/api/comments', commentRoutes);
 
-// MongoDB Connection
-const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/Canvas';
-mongoose.connect(mongoURI)
-  .then(async () => {
-    console.log(`MongoDB Connected: ${mongoURI}`);
-    console.log(`Database Name: ${mongoose.connection.name}`);
-
-    // Diagnostic check
-    const userCount = await mongoose.connection.db.collection('users').countDocuments();
-    const canvasCount = await mongoose.connection.db.collection('canvases').countDocuments();
-    console.log(`--- DB Diagnostics ---`);
-    console.log(`Users in DB: ${userCount}`);
-    console.log(`Canvases in DB: ${canvasCount}`);
-    console.log(`----------------------`);
-  })
-  .catch(err => console.error('MongoDB Connection Error:', err));
-
 // Health Endpoint
 app.get('/', (req, res) => {
-  res.send('Backend is alive');
+  res.json({
+    status: 'Backend is alive',
+    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    port: PORT
+  });
+});
+
+// ----------------------------------------------------
+// HTTP + WebSocket Server Setup
+// ----------------------------------------------------
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (conn, req) => {
+  setupWSConnection(conn, req);
+});
+
+// MongoDB Connection
+const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/Canvas';
+
+console.log(`[DB] Attempting to connect to: ${mongoURI}`);
+mongoose.connect(mongoURI, {
+  serverSelectionTimeoutMS: 5000,
+})
+  .then(async () => {
+    console.log(`[DB] MongoDB Connected: ${mongoURI}`);
+    console.log(`[DB] Database Name: ${mongoose.connection.name}`);
+
+    try {
+      // Diagnostic check
+      const userCount = await mongoose.connection.db.collection('users').countDocuments();
+      const canvasCount = await mongoose.connection.db.collection('canvases').countDocuments();
+      console.log(`--- DB Diagnostics ---`);
+      console.log(`Users in DB: ${userCount}`);
+      console.log(`Canvases in DB: ${canvasCount}`);
+      console.log(`----------------------`);
+    } catch (e) {
+      console.log('[DB] [Diagnostics] Collection not initialized yet.');
+    }
+  })
+  .catch(err => {
+    console.error('[DB] MongoDB Connection Error:', err.message);
+  });
+
+mongoose.connection.on('error', err => {
+  console.error('[DB] MongoDB Runtime Error:', err);
+});
+
+// Start Server
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`WebSocket endpoint ready`);
 });
 
 // ----------------------------------------------------
@@ -187,13 +221,6 @@ setPersistence({
     // CRITICAL: Prevent overwrite if we are still loading the initial state
     if (docsLoading.has(cleanDocName)) {
       console.log(`[Yjs] Skipping write for ${cleanDocName}: Document is still loading.`);
-      return;
-    }
-
-    // CRITICAL (US4/Rollback): Prevent server from saving the dying future state 
-    // over our freshly restored database state when connections are forcibly closed
-    if (doc._isRolledBack) {
-      console.log(`[Yjs] Skipping write for ${cleanDocName}: Document was rolled back!`);
       return;
     }
 

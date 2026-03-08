@@ -18,7 +18,7 @@ export class LayerManager {
    */
   createLayer(name, options = {}) {
     const layer = {
-      id: crypto.randomUUID(),
+      id: (crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2),
       name: name || `Layer ${this.layers.length + 1}`,
       visible: options.visible !== undefined ? options.visible : true,
       locked: options.locked !== undefined ? options.locked : false,

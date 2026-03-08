@@ -10,7 +10,7 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { SceneManager } from './managers/SceneManager';
 import { LayerManager } from './managers/LayerManager';
-import HistoryManager, { RemoveObjectCommand } from './managers/HistoryManager';
+import HistoryManager, { RemoveObjectCommand, BatchCommand } from './managers/HistoryManager';
 import { CoordinateMapper } from './utils/CoordinateMapper';
 import { BoundsCalculation } from './utils/BoundsCalculation';
 import ToolManager from './ToolManager';
@@ -103,14 +103,14 @@ export class CanvasEngineController {
 
           console.log(`[Yjs] Initial Sync State: ${layerCount} layers, ${objectCount} objects`);
 
-          if (layerCount === 0) {
+          if (layerCount === 0 && this.canEdit()) {
             console.log('[Yjs] No existing layers found, creating default layer');
             this.createDefaultLayer();
           } else {
             console.log('[Yjs] Existing state found, syncing to engine');
             this.syncFromYjs();
           }
-        }, 800);
+        }, 500);
       }
     });
 
@@ -276,30 +276,190 @@ export class CanvasEngineController {
           this.state.activeLayerId = layers[0].id;
         }
       }
+
+      // Notify UI of scene updates
+      this.dispatchStateChange('sceneUpdate', {
+        objects: this.sceneManager.objects,
+        objectOrder: this.sceneManager.objectOrder,
+        layers: this.layerManager.layers
+      });
+
       this.render();
     } catch (e) {
       console.error('Sync Error:', e);
     }
   }
 
-  rescueOrphans(layerId) {
+  // --- LAYER/OBJECT MANAGEMENT ---
+
+  reorderObjects(newOrder) {
+    if (!this.canEdit()) return;
     this.doc.transact(() => {
+      // For now, we assume all objects belong to the active layer for simplicity
+      // in this flat Figma-style view. 
       const layers = this.yLayers.toArray();
-      const idx = layers.findIndex(l => l.id === layerId);
+      const idx = layers.findIndex(l => l.id === this.state.activeLayerId);
       if (idx === -1) return;
 
       const layer = this.yLayers.get(idx);
-      const objects = this.yObjects.toJSON();
-      const allPlacedIds = [];
-      layers.forEach(l => allPlacedIds.push(...l.objects));
+      const updatedLayer = { ...layer, objects: newOrder };
+      this.yLayers.delete(idx);
+      this.yLayers.insert(idx, [updatedLayer]);
+    });
+  }
 
-      const orphans = Object.keys(objects).filter(id => !allPlacedIds.includes(id));
-      if (orphans.length > 0) {
-        const updatedLayer = { ...layer, objects: [...layer.objects, ...orphans] };
+  duplicateObject(objectId) {
+    if (!this.canEdit()) return;
+    const original = this.yObjects.get(objectId);
+    if (!original) return;
+
+    const newId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+    const copy = JSON.parse(JSON.stringify(original));
+    copy.id = newId;
+    copy.name = copy.name ? `Copy of ${copy.name}` : `Copy of ${copy.type}`;
+    
+    // Offset position
+    if (copy.geometry.x !== undefined) {
+      copy.geometry.x += 10;
+      copy.geometry.y += 10;
+    } else if (copy.geometry.points) {
+      copy.geometry.points = copy.geometry.points.map(p => ({ x: p.x + 10, y: p.y + 10 }));
+    } else if (copy.geometry.cx !== undefined) {
+      copy.geometry.cx += 10;
+      copy.geometry.cy += 10;
+    } else if (copy.geometry.x1 !== undefined) {
+      copy.geometry.x1 += 10;
+      copy.geometry.y1 += 10;
+      copy.geometry.x2 += 10;
+      copy.geometry.y2 += 10;
+    }
+
+    this.doc.transact(() => {
+      this.yObjects.set(newId, copy);
+      const layers = this.yLayers.toArray();
+      const idx = layers.findIndex(l => l.id === copy.layerId);
+      if (idx !== -1) {
+        const layer = this.yLayers.get(idx);
+        const updatedLayer = { ...layer, objects: [...layer.objects, newId] };
         this.yLayers.delete(idx);
         this.yLayers.insert(idx, [updatedLayer]);
-        console.log(`[Engine] Successfully rescued ${orphans.length} objects into ${layerId}`);
       }
+    });
+    return newId;
+  }
+
+  toggleObjectVisibility(objectId) {
+    if (!this.canEdit()) return;
+    const obj = this.yObjects.get(objectId);
+    if (!obj) return;
+    this.updateObject(objectId, { visible: !obj.visible });
+  }
+
+  toggleObjectLock(objectId) {
+    if (!this.canEdit()) return;
+    const obj = this.yObjects.get(objectId);
+    if (!obj) return;
+    this.updateObject(objectId, { locked: !obj.locked });
+    
+    // Deselect if locked
+    if (!obj.locked && this.state.selectedObjectIds.includes(objectId)) {
+      this.setSelectionAwareness(this.state.selectedObjectIds.filter(id => id !== objectId));
+    }
+  }
+
+  renameObject(objectId, newName) {
+    if (!this.canEdit()) return;
+    this.updateObject(objectId, { name: newName });
+  }
+
+  // --- FIGMA-STYLE STACKING COMMANDS ---
+
+  bringToFront(objectId) {
+    if (!this.canEdit()) return;
+    const allObjects = Object.values(this.sceneManager.objects).sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+    const maxZ = allObjects.length > 0 ? allObjects[allObjects.length - 1].zIndex : 0;
+    this.updateObject(objectId, { zIndex: maxZ + 1 });
+  }
+
+  sendToBack(objectId) {
+    if (!this.canEdit()) return;
+    const allObjects = Object.values(this.sceneManager.objects).sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+    const minZ = allObjects.length > 0 ? allObjects[0].zIndex : 0;
+    this.updateObject(objectId, { zIndex: minZ - 1 });
+  }
+
+  bringForward(objectId) {
+    if (!this.canEdit()) return;
+    const obj = this.sceneManager.objects[objectId];
+    if (!obj) return;
+    const allObjects = Object.values(this.sceneManager.objects).sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+    const idx = allObjects.findIndex(o => o.id === objectId);
+    if (idx < allObjects.length - 1) {
+      const target = allObjects[idx + 1];
+      const targetZ = target.zIndex;
+      this.doc.transact(() => {
+        this.updateObject(target.id, { zIndex: obj.zIndex });
+        this.updateObject(objectId, { zIndex: targetZ });
+      });
+    }
+  }
+
+  sendBackward(objectId) {
+    if (!this.canEdit()) return;
+    const obj = this.sceneManager.objects[objectId];
+    if (!obj) return;
+    const allObjects = Object.values(this.sceneManager.objects).sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+    const idx = allObjects.findIndex(o => o.id === objectId);
+    if (idx > 0) {
+      const target = allObjects[idx - 1];
+      const targetZ = target.zIndex;
+      this.doc.transact(() => {
+        this.updateObject(target.id, { zIndex: obj.zIndex });
+        this.updateObject(objectId, { zIndex: targetZ });
+      });
+    }
+  }
+
+  // --- FIGMA-STYLE GROUPING ---
+
+  groupObjects(objectIds) {
+    if (!this.canEdit() || !objectIds || objectIds.length < 2) return;
+    
+    const groupId = `group_${Date.now()}`;
+    const firstObj = this.sceneManager.objects[objectIds[0]];
+    
+    const groupObject = {
+      id: groupId,
+      name: "Group",
+      type: "group",
+      children: objectIds, // Store IDs of nested layers
+      zIndex: firstObj.zIndex,
+      visible: true,
+      locked: false,
+      layerId: firstObj.layerId
+    };
+
+    this.doc.transact(() => {
+      this.yObjects.set(groupId, groupObject);
+      // Mark children as members of this group
+      objectIds.forEach(id => {
+        this.updateObject(id, { parentId: groupId });
+      });
+    });
+    
+    return groupId;
+  }
+
+  ungroupObjects(groupId) {
+    if (!this.canEdit()) return;
+    const group = this.sceneManager.objects[groupId];
+    if (!group || group.type !== 'group') return;
+
+    this.doc.transact(() => {
+      group.children.forEach(childId => {
+        this.updateObject(childId, { parentId: null });
+      });
+      this.yObjects.delete(groupId);
     });
   }
 
@@ -431,11 +591,17 @@ export class CanvasEngineController {
       const localState = this.awareness.getLocalState();
       const creator = localState?.user || { id: 'unknown', name: 'Unknown' };
 
+      const allObjects = Object.values(this.sceneManager.objects);
+      const maxZ = allObjects.reduce((max, o) => Math.max(max, o.zIndex || 0), 0);
+
       const obj = {
         ...object,
         id,
+        name: object.name || `${object.type} ${allObjects.length + 1}`,
+        zIndex: maxZ + 1,
         layerId,
         visible: true,
+        locked: false,
         style: {
           color: object.style?.color || '#217BF4',
           width: object.style?.width || 5,
@@ -768,13 +934,15 @@ export class CanvasEngineController {
     this.renderGrid();
 
     // Normal live rendering
-    const layers = this.yLayers.toArray();
-    layers.forEach(layer => {
-      if (!layer.visible) return;
-      layer.objects.forEach(id => {
-        const obj = this.yObjects.get(id);
-        if (obj && obj.visible) this.renderObject(obj);
-      });
+    // Sort layers/objects by zIndex (lowest to highest) for correct stacking on canvas
+    const objects = Object.values(this.sceneManager.objects)
+      .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+
+    objects.forEach(obj => {
+      // FEATURE 3: skip rendering if hidden
+      if (obj && obj.visible !== false) {
+        this.renderObject(obj);
+      }
     });
 
     if (this.currentTool && this.currentTool.renderPreview) {

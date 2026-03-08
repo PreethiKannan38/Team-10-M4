@@ -21,7 +21,9 @@ export default function TopBar({
   isChatOpen,
   setIsChatOpen,
   isAuthorshipMode,
-  onAuthorshipToggle
+  onAuthorshipToggle,
+  theme,
+  onThemeToggle
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -314,6 +316,14 @@ export default function TopBar({
             title="Download as PNG"
           >
             <Download className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={onThemeToggle}
+            className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 ml-1"
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? <Plus size={16} /> : <Settings size={16} />}
           </button>
         </div>
 

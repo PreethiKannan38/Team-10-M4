@@ -209,12 +209,12 @@ export class SelectTool extends BaseTool {
       const ids = [];
       const allObjects = Object.values(engine.sceneManager.objects);
       allObjects.forEach(obj => {
+        if (obj.locked || !obj.visible) return;
         const bounds = this._getObjectBounds(obj);
         if (this._rectsIntersect(rect, bounds)) {
           ids.push(obj.id);
         }
       });
-
       let finalIds = engine.shiftPressed ? [...new Set([...engine.state.selectedObjectIds, ...ids])] : ids;
       engine.setSelectionAwareness(finalIds);
       if (finalIds.length === 1) this._updateSelectionBounds(engine.getObject(finalIds[0]));

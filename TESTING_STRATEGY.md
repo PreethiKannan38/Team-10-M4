@@ -71,7 +71,7 @@ End-to-End testing verifies the system as a whole, ensuring the Frontend and Bac
 
 ### Workflow Verification
 Currently performed manually:
-1.  **Start Backend**: `npm start` (Port 5000)
+1.  **Start Backend**: `npm start` (Port 5002)
 2.  **Start Frontend**: `npm run dev` (Port 5173)
 3.  **Execute Scenarios**:
     - **Happy Path**: Register -> Login -> Create Project -> Save -> Logout -> Login -> specific Project exists.
