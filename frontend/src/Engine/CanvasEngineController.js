@@ -46,6 +46,7 @@ export class CanvasEngineController {
 
     // === CORE STATE ===
     this.state = {
+      isDistractionFree: false,
       activeTool: 'draw',
       isDrawing: false,
       isPanning: false,
@@ -391,6 +392,12 @@ export class CanvasEngineController {
 
   getBrushOptions() {
     return { ...this.state.brushOptions };
+  }
+
+  toggleDistractionFreeMode() {
+    this.state.isDistractionFree = !this.state.isDistractionFree;
+    this.render(); // Force canvas refresh
+    console.log("Focus Mode:", this.state.isDistractionFree ? "ON" : "OFF");
   }
 
   addObject(object) {
@@ -774,14 +781,16 @@ export class CanvasEngineController {
       this.currentTool.renderPreview(this.ctx, this);
     }
 
-    // Render Author Tooltip on hovered object
-    this.renderAuthorTooltip();
+    if (!this.state.isDistractionFree) {
+      // Render Author Tooltip on hovered object
+      this.renderAuthorTooltip();
 
-    // Render Remote Selections
-    this.renderRemoteSelections();
+      // Render Remote Selections
+      this.renderRemoteSelections();
 
-    // Render Remote Cursors (Ensure it occurs after canvas elements and selections)
-    this.renderRemoteCursors();
+      // Render Remote Cursors (Ensure it occurs after canvas elements and selections)
+      this.renderRemoteCursors();
+    }
 
     if (this.state.undoPreview) {
       this._renderPreview('undo');

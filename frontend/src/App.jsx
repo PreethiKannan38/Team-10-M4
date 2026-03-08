@@ -217,6 +217,10 @@ function CanvasWorkspace({ canvasEngineRef }) {
       case 'tag':
         handleTagState();
         break;
+      case 'toggle-focus':
+        canvasEngineRef.current.toggleDistractionFreeMode();
+        // Force a re-render of Toolbar UI block using a dummy state if we want visual feedback (optional)
+        break;
       case 'dashboard':
         navigate('/');
         break;
