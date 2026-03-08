@@ -18,6 +18,10 @@ dist-ssr
 .DS_Store
 Thumbs.db
 
+# Environment
+.env
+
+
 # Vite / React
 frontend/.vite
 
