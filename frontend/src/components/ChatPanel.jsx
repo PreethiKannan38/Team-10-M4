@@ -60,21 +60,23 @@ const ChatPanel = ({ canvasId, engine, currentUser, isOpen, onClose }) => {
 
     // Handle Engine Selection tracking
     useEffect(() => {
-        if (!engine) return;
-
-        const checkSelection = () => {
-            if (typeof engine.getSelectedObjectId === 'function') {
-                setSelectedObjectId(engine.getSelectedObjectId());
+        // Listen for the correct engine event for selection changes
+        const handleSelectionChange = (e) => {
+            const { key, value } = e.detail;
+            if (key === 'selection') {
+                setSelectedObjectId(value);
             }
         };
 
-        checkSelection();
-        window.addEventListener('canvasSelectionChange', checkSelection);
-        window.addEventListener('mouseup', checkSelection);
+        window.addEventListener('engineStateChange', handleSelectionChange);
+
+        // Also try to get initial selection from engine if already available
+        if (engine && typeof engine.getSelectedObjectId === 'function') {
+            setSelectedObjectId(engine.getSelectedObjectId());
+        }
 
         return () => {
-            window.removeEventListener('canvasSelectionChange', checkSelection);
-            window.removeEventListener('mouseup', checkSelection);
+            window.removeEventListener('engineStateChange', handleSelectionChange);
         };
     }, [engine]);
 
