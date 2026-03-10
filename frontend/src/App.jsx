@@ -210,8 +210,14 @@ function CanvasWorkspace({ canvasEngineRef }) {
       case 'clear':
         clearCanvas();
         break;
-      case 'export':
-        canvasEngineRef.current.exportToImage();
+      case 'export-png':
+        canvasEngineRef.current.exportToImage('png');
+        break;
+      case 'export-jpeg':
+        canvasEngineRef.current.exportToImage('jpeg');
+        break;
+      case 'export-json':
+        canvasEngineRef.current.exportToJson();
         break;
       case 'tag':
         handleTagState();
@@ -270,7 +276,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout}
           userRole={userRole}
-          onExport={() => handleAction('export')}
+          onExport={(format) => handleAction(`export-${format}`)}
           branches={branches}
           onBranch={handleBranch}
           onBranchDelete={handleDeleteBranch}
