@@ -32,7 +32,11 @@ const Login = () => {
                 navigate('/dashboard');
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+            if (!err.response) {
+                setError('Could not connect to the server. Please check if the backend is running.');
+            } else {
+                setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+            }
         } finally {
             setLoading(false);
         }
