@@ -1259,7 +1259,17 @@ export class CanvasEngineController {
     this.spacePressed = false;
     this.shiftPressed = false;
 
+    const isInputField = (el) => {
+      return el.tagName === 'INPUT' ||
+        el.tagName === 'TEXTAREA' ||
+        el.tagName === 'SELECT' ||
+        el.isContentEditable ||
+        el.closest('[contenteditable="true"]');
+    };
+
     window.addEventListener('keydown', e => {
+      if (isInputField(e.target)) return;
+
       if (e.code === 'Space') {
         this.spacePressed = true;
         this.canvas.style.cursor = 'grab';
@@ -1289,6 +1299,8 @@ export class CanvasEngineController {
     });
 
     window.addEventListener('keyup', e => {
+      if (isInputField(e.target)) return;
+
       if (e.code === 'Space') {
         this.spacePressed = false;
         this.canvas.style.cursor = 'crosshair';
