@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Pencil, MousePointer2, Eraser, Square, Circle, Type, PaintBucket, Move, PenTool, Triangle, Hexagon,
-  Undo2, Redo2, Trash2, Download, Brush, Tag
+  Undo2, Redo2, Trash2, Download, Brush, Tag, EyeOff
 } from 'lucide-react'
 
 const toolGroups = [
@@ -68,7 +68,8 @@ const toolGroups = [
       { id: 'tag', icon: Tag, name: 'Tag Current State' },
       { id: 'undo', icon: Undo2, name: 'Undo Action' },
       { id: 'redo', icon: Redo2, name: 'Redo Action' },
-      { id: 'export', icon: Download, name: 'Download Canvas' }
+      { id: 'export', icon: Download, name: 'Download Canvas' },
+      { id: 'toggle-focus', icon: EyeOff, name: 'Focus Mode' }
     ]
   }
 ]
@@ -82,7 +83,7 @@ export default function Toolbar({ activeTool, onToolChange, onAction, onPreviewA
   }
 
   const handleToolClick = (tool) => {
-    const isAction = ['undo', 'redo', 'clear', 'export', 'tag'].includes(tool.id)
+    const isAction = ['undo', 'redo', 'clear', 'export', 'tag', 'toggle-focus'].includes(tool.id)
     if (isAction) onAction?.(tool.id)
     else onToolChange(tool.id)
   }
@@ -96,7 +97,7 @@ export default function Toolbar({ activeTool, onToolChange, onAction, onPreviewA
       if (group.id === 'history') {
         return {
           ...group,
-          tools: group.tools.filter(t => t.id === 'export')
+          tools: group.tools.filter(t => t.id === 'export' || t.id === 'toggle-focus')
         };
       }
       return null;
