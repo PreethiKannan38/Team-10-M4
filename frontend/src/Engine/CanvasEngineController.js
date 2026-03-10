@@ -507,20 +507,6 @@ export class CanvasEngineController {
     this.syncFromYjs();
   }
 
-  importFromImage(src) {
-    const img = new Image();
-    img.onload = () => {
-      // Create image object on the current canvas
-      this.addObject({
-        type: 'image',
-        geometry: { x: this.state.pan.x * -1 + 100, y: this.state.pan.y * -1 + 100, width: img.width, height: img.height, src },
-        style: { opacity: 1.0 },
-        metadata: { name: 'Imported Image' }
-      });
-      this.render();
-    };
-    img.src = src;
-  }
 
   removeObject(objectId) {
     if (!this.canEdit()) return;
