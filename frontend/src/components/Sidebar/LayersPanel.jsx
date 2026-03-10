@@ -19,13 +19,13 @@ export const LayersPanel = ({ layers, activeId, actions }) => {
     return layers.filter(l => !l.parentId);
   }, [layers]);
 
-  const filteredRoot = rootLayers.filter(l => 
+  const filteredRoot = rootLayers.filter(l =>
     (l.name || l.type).toLowerCase().includes(search.toLowerCase())
   );
 
   const handleAction = (type, id) => {
     if (!actions) return;
-    switch(type) {
+    switch (type) {
       case 'bringToFront': actions.bringToFront?.(id); break;
       case 'sendToBack': actions.sendToBack?.(id); break;
       default: break;
@@ -38,7 +38,7 @@ export const LayersPanel = ({ layers, activeId, actions }) => {
 
     return (
       <React.Fragment key={layer.id}>
-        <LayerRow 
+        <LayerRow
           layer={layer}
           isActive={activeId === layer.id}
           depth={depth}
@@ -77,12 +77,12 @@ export const LayersPanel = ({ layers, activeId, actions }) => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:border-indigo-700 hover:text-white transition-all shadow-sm active:scale-90">
             <Plus size={18} strokeWidth={2.5} />
           </button>
-          <button 
+          <button
             onClick={() => setIsOpen(!isOpen)}
             className={`w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-300 hover:text-slate-600 transition-all ${isOpen ? 'rotate-180 bg-slate-50' : ''}`}
           >
@@ -97,7 +97,7 @@ export const LayersPanel = ({ layers, activeId, actions }) => {
         <div className="px-6 pb-4">
           <div className="relative group">
             <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-            <input 
+            <input
               placeholder="Search elements..."
               className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 pl-11 pr-4 text-[11px] font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm"
               value={search}

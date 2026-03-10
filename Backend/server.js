@@ -28,7 +28,7 @@ import commentRoutes from './routes/commentRoutes.js';
 import { Server } from "socket.io";
 
 const app = express();
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
@@ -49,19 +49,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// ----------------------------------------------------
-// HTTP + WebSocket Server Setup
-// ----------------------------------------------------
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
-
-wss.on('connection', (conn, req) => {
-  setupWSConnection(conn, req);
-});
-
 // MongoDB Connection
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/Canvas';
-
 console.log(`[DB] Attempting to connect to: ${mongoURI}`);
 mongoose.connect(mongoURI, {
   serverSelectionTimeoutMS: 5000,
@@ -71,7 +60,6 @@ mongoose.connect(mongoURI, {
     console.log(`[DB] Database Name: ${mongoose.connection.name}`);
 
     try {
-      // Diagnostic check
       const userCount = await mongoose.connection.db.collection('users').countDocuments();
       const canvasCount = await mongoose.connection.db.collection('canvases').countDocuments();
       console.log(`--- DB Diagnostics ---`);
@@ -82,18 +70,10 @@ mongoose.connect(mongoURI, {
       console.log('[DB] [Diagnostics] Collection not initialized yet.');
     }
   })
-  .catch(err => {
-    console.error('[DB] MongoDB Connection Error:', err.message);
-  });
+  .catch(err => console.error('[DB] MongoDB Connection Error:', err.message));
 
 mongoose.connection.on('error', err => {
   console.error('[DB] MongoDB Runtime Error:', err);
-});
-
-// Start Server
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`WebSocket endpoint ready`);
 });
 
 // ----------------------------------------------------
@@ -106,14 +86,11 @@ setPersistence({
     const cleanDocName = docName.startsWith('/') ? docName.slice(1) : docName;
     try {
       docsLoading.add(cleanDocName);
-      console.log(`[Yjs] [Lock] Locked ${cleanDocName} for loading...`);
-      console.log(`[Yjs] Loading state for room: "${cleanDocName}" (original: "${docName}")`);
+      console.log(`[Yjs] Loading state for room: "${cleanDocName}"`);
 
       const savedCanvas = await Canvas.findOne({ canvasId: cleanDocName });
 
       // --- TIMELINE LOGGING (US1) ---
-      // Batch state logger: Instead of saving every granular operation, we debounce/throttle
-      // and save full state snapshots. This improves UI replay performance drastically.
       if (!doc._hasEventLogger) {
         let batchTimeout = null;
         let isFirstEvent = true;
@@ -126,9 +103,8 @@ setPersistence({
               update: Buffer.from(docState),
               type: 'state-batch'
             });
-            console.log(`[EventLog] Saved batch state snapshot for ${cleanDocName}`);
           } catch (err) {
-            console.error(`[EventLog] Error saving batch update for ${cleanDocName}:`, err);
+            console.error(`[EventLog] Error saving batch update:`, err);
           }
         };
 
@@ -136,38 +112,29 @@ setPersistence({
           if (isFirstEvent) {
             isFirstEvent = false;
             lastSaveTime = Date.now();
-            const docState = Y.encodeStateAsUpdate(doc);
-            saveBatchEvent(docState);
+            saveBatchEvent(Y.encodeStateAsUpdate(doc));
             return;
           }
 
-          // Throttle saves to max 4 times per second (250ms) to create smooth animation
           const now = Date.now();
           if (now - lastSaveTime > 250) {
             lastSaveTime = now;
-            const docState = Y.encodeStateAsUpdate(doc);
-            saveBatchEvent(docState);
+            saveBatchEvent(Y.encodeStateAsUpdate(doc));
           } else {
-            // Also debounce to ensure the absolute final state is captured after drawing stops
             clearTimeout(batchTimeout);
             batchTimeout = setTimeout(() => {
               lastSaveTime = Date.now();
-              const docState = Y.encodeStateAsUpdate(doc);
-              saveBatchEvent(docState);
+              saveBatchEvent(Y.encodeStateAsUpdate(doc));
             }, 300);
           }
         });
-
         doc._hasEventLogger = true;
-        console.log(`[EventLog] Attached batched timeline logger to room: ${cleanDocName}`);
       }
 
       if (savedCanvas && savedCanvas.documentState) {
-        console.log(`[Yjs] Found state for ${cleanDocName} (${savedCanvas.documentState.length} bytes)`);
         Y.applyUpdate(doc, new Uint8Array(savedCanvas.documentState));
       } else {
-        console.log(`[Yjs] No existing state found in DB for "${cleanDocName}". Initializing default state...`);
-        // Ensure the doc has at least one layer so the client doesn't see "0 layers"
+        console.log(`[Yjs] Initializing default layers for "${cleanDocName}"`);
         doc.transact(() => {
           const yLayers = doc.getArray('layers');
           if (yLayers.length === 0) {
@@ -184,77 +151,52 @@ setPersistence({
         });
       }
 
+      // --- SESSION TIMER ---
       if (!doc._hasSessionTimer) {
         doc._hasSessionTimer = true;
         const sessionMeta = doc.getMap('sessionMeta');
-
         if (savedCanvas && savedCanvas.expiresAt) {
           const expiryTime = new Date(savedCanvas.expiresAt).getTime();
-
           const intervalId = setInterval(() => {
             const now = Date.now();
             const remainingSeconds = Math.round((expiryTime - now) / 1000);
-
-            // Trigger 5 minutes, 1 minute, and 10 seconds warnings
-            if (remainingSeconds === 300 || remainingSeconds === 60 || remainingSeconds === 10) {
+            if ([300, 60, 10].includes(remainingSeconds)) {
               sessionMeta.set('sessionWarning', { remaining: remainingSeconds, ts: now });
             }
-
             if (remainingSeconds <= 0) {
               clearInterval(intervalId);
-              // Fire final termination
               sessionMeta.set('sessionWarning', { remaining: 0, ts: now });
             }
           }, 1000);
         }
       }
     } catch (err) {
-      console.error(`[Yjs] Error loading document ${docName}:`, err);
+      console.error(`[Yjs] Error loading document:`, err);
     } finally {
       docsLoading.delete(cleanDocName);
-      console.log(`[Yjs] [Lock] Unlocked ${cleanDocName} (Load complete)`);
     }
   },
   writeState: async (docName, doc) => {
     const cleanDocName = docName.startsWith('/') ? docName.slice(1) : docName;
-
-    // CRITICAL: Prevent overwrite if we are still loading the initial state
-    if (docsLoading.has(cleanDocName)) {
-      console.log(`[Yjs] Skipping write for ${cleanDocName}: Document is still loading.`);
-      return;
-    }
+    if (docsLoading.has(cleanDocName)) return;
 
     try {
       const update = Y.encodeStateAsUpdate(doc);
+      if (update.length < 10) return;
 
-      if (update.length < 10) {
-        // Skip saving if it's just an empty/minimal update to avoid unnecessary DB calls
-        return;
-      }
-
-      console.log(`[Yjs] Saving state for "${cleanDocName}" (${update.length} bytes)`);
-      console.log(`[Yjs] Calling Canvas.findOneAndUpdate({ canvasId: "${cleanDocName}" }, { documentState: ... }, { upsert: true, new: true })`);
-      const result = await Canvas.findOneAndUpdate(
+      await Canvas.findOneAndUpdate(
         { canvasId: cleanDocName },
-        {
-          documentState: Buffer.from(update),
-        },
+        { documentState: Buffer.from(update) },
         { upsert: true, new: true, timestamps: true }
       );
-
-      if (result) {
-        console.log(`[Yjs] State saved for "${cleanDocName}". Last modified: ${result.updatedAt}`);
-      } else {
-        console.log(`[Yjs] WARNING: Failed to save state for "${cleanDocName}"`);
-      }
     } catch (err) {
-      console.error(`[Yjs] Error saving document ${docName}:`, err);
+      console.error(`[Yjs] Error saving document:`, err);
     }
   }
 });
 
 // ----------------------------------------------------
-// HTTP + WebSocket Server Setup
+// Server Setup
 // ----------------------------------------------------
 const server = http.createServer(app);
 
@@ -274,14 +216,7 @@ io.on('connection', (socket) => {
   socket.on('add_object_comment', async (data) => {
     try {
       const { sessionId, objectId, message, user } = data;
-      const newComment = await Comment.create({
-        sessionId,
-        objectId,
-        message,
-        user
-      });
-
-      // Broadcast to everyone in the room
+      const newComment = await Comment.create({ sessionId, objectId, message, user });
       io.to(sessionId).emit('object_comment_added', newComment);
     } catch (error) {
       console.error('Socket error adding comment:', error);
@@ -294,10 +229,8 @@ const wss = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (request, socket, head) => {
   if (request.url.startsWith('/socket.io/')) {
-    // Socket.IO engine will automatically handle this if attached to `server`.
-    // We don't need to do anything, because socket.io intercepts it internally.
+    // Socket.IO is handling this automatically through being attached to 'server'
   } else {
-    // Hand over to Y-Websocket
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request);
     });
@@ -310,6 +243,6 @@ wss.on('connection', (conn, req) => {
 
 // Start Server
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
   console.log(`WebSocket endpoint ready`);
 });

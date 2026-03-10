@@ -317,7 +317,7 @@ export class CanvasEngineController {
     const copy = JSON.parse(JSON.stringify(original));
     copy.id = newId;
     copy.name = copy.name ? `Copy of ${copy.name}` : `Copy of ${copy.type}`;
-    
+
     // Offset position
     if (copy.geometry.x !== undefined) {
       copy.geometry.x += 10;
@@ -360,7 +360,7 @@ export class CanvasEngineController {
     const obj = this.yObjects.get(objectId);
     if (!obj) return;
     this.updateObject(objectId, { locked: !obj.locked });
-    
+
     // Deselect if locked
     if (!obj.locked && this.state.selectedObjectIds.includes(objectId)) {
       this.setSelectionAwareness(this.state.selectedObjectIds.filter(id => id !== objectId));
@@ -424,10 +424,10 @@ export class CanvasEngineController {
 
   groupObjects(objectIds) {
     if (!this.canEdit() || !objectIds || objectIds.length < 2) return;
-    
+
     const groupId = `group_${Date.now()}`;
     const firstObj = this.sceneManager.objects[objectIds[0]];
-    
+
     const groupObject = {
       id: groupId,
       name: "Group",
@@ -446,7 +446,7 @@ export class CanvasEngineController {
         this.updateObject(id, { parentId: groupId });
       });
     });
-    
+
     return groupId;
   }
 

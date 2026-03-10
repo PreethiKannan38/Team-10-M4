@@ -42,11 +42,11 @@ export const useLayers = (engine, activeLayerId, setActiveLayerId) => {
 
   const reorderLayers = useCallback((draggedId, targetId) => {
     if (!engine) return;
-    
+
     const all = [...layers];
     const draggedIdx = all.findIndex(l => l.id === draggedId);
     const targetIdx = all.findIndex(l => l.id === targetId);
-    
+
     if (draggedIdx === -1 || targetIdx === -1) return;
 
     const [removed] = all.splice(draggedIdx, 1);
@@ -66,11 +66,11 @@ export const useLayers = (engine, activeLayerId, setActiveLayerId) => {
     });
   }, [engine, layers]);
 
-  return { 
-    layers, 
-    updateLayer, 
-    deleteLayer, 
-    duplicateLayer, 
+  return {
+    layers,
+    updateLayer,
+    deleteLayer,
+    duplicateLayer,
     reorderLayers,
     bringToFront: (id) => engine?.bringToFront(id),
     sendToBack: (id) => engine?.sendToBack(id),
