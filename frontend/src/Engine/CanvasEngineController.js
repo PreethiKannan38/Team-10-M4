@@ -1178,6 +1178,21 @@ export class CanvasEngineController {
         geometry.width || 200,
         fontSize * 1.2
       );
+    } else if (type === 'image') {
+      if (!this._imgCache) this._imgCache = {};
+      if (!this._imgCache[id]) {
+        const img = new Image();
+        this._imgCache[id] = { img, loaded: false };
+        img.onload = () => {
+          this._imgCache[id].loaded = true;
+          this.render();
+        };
+        img.onerror = (e) => console.error("CanvasEngineController Image Load Error:", e);
+        img.src = geometry.src;
+      }
+      if (this._imgCache[id].loaded) {
+         this.ctx.drawImage(this._imgCache[id].img, geometry.x, geometry.y, geometry.width, geometry.height);
+      }
     }
 
     // Draw a bounding box for selected items for extra clarity
