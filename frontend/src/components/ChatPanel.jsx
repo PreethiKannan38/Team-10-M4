@@ -64,6 +64,7 @@ const ChatPanel = ({ canvasId, engine, currentUser, isOpen, onClose }) => {
         const handleSelectionChange = (e) => {
             const { key, value } = e.detail;
             if (key === 'selection') {
+                console.log("[ChatPanel] Engine selection event received. New selected object:", value);
                 setSelectedObjectId(value);
             }
         };
@@ -72,13 +73,29 @@ const ChatPanel = ({ canvasId, engine, currentUser, isOpen, onClose }) => {
 
         // Also try to get initial selection from engine if already available
         if (engine && typeof engine.getSelectedObjectId === 'function') {
-            setSelectedObjectId(engine.getSelectedObjectId());
+            const currentSelected = engine.getSelectedObjectId();
+            console.log("[ChatPanel] Component mounted/engine updated. Current selected object:", currentSelected);
+            if (currentSelected !== selectedObjectId) {
+                setSelectedObjectId(currentSelected);
+            }
         }
+
+        // Add an interval to forcefully sync selection as a fallback
+        const syncInterval = setInterval(() => {
+            if (engine && typeof engine.getSelectedObjectId === 'function') {
+                const currentSelected = engine.getSelectedObjectId();
+                if (currentSelected !== selectedObjectId) {
+                    console.log("[ChatPanel] Forced sync of selected object from interval:", currentSelected);
+                    setSelectedObjectId((prev) => currentSelected !== prev ? currentSelected : prev);
+                }
+            }
+        }, 500);
 
         return () => {
             window.removeEventListener('engineStateChange', handleSelectionChange);
+            clearInterval(syncInterval);
         };
-    }, [engine]);
+    }, [engine, selectedObjectId]);
 
     // Sync comment counts to the engine for rendering 💬 badges on canvas
     useEffect(() => {
