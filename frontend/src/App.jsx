@@ -224,52 +224,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
         reader.readAsText(file);
       } else {
         reader.onload = (event) => {
-          const img = new window.Image();
-          img.onload = () => {
-            const layerId = 'default-layer';
-            const imageId = 'imported-image-' + Date.now();
-            
-            const importedJson = {
-              version: '1.0',
-              layers: [
-                {
-                  id: layerId,
-                  name: 'Background',
-                  visible: true,
-                  locked: false,
-                  opacity: 1.0,
-                  objects: [imageId],
-                  metadata: {}
-                }
-              ],
-              objects: {
-                [imageId]: {
-                  id: imageId,
-                  type: 'image',
-                  layerId: layerId,
-                  visible: true,
-                  geometry: {
-                    x: 0,
-                    y: 0,
-                    width: img.width,
-                    height: img.height,
-                    src: event.target.result
-                  },
-                  style: { opacity: 1.0 },
-                  metadata: { name: 'Imported Image Background' }
-                }
-              }
-            };
-
-            canvasEngineRef.current.importFromJson(importedJson);
-            
-            // Optionally force pan/zoom reset via engine if we want it centered
-            if (canvasEngineRef.current.state) {
-              canvasEngineRef.current.state.pan = { x: 0, y: 0 };
-              canvasEngineRef.current.setZoom(1.0);
-            }
-          };
-          img.src = event.target.result;
+           canvasEngineRef.current.importFromImage(event.target.result);
         };
         reader.readAsDataURL(file);
       }
