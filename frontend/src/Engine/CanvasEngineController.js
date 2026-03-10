@@ -456,10 +456,39 @@ export class CanvasEngineController {
     return this.yObjects.get(id);
   }
 
-  exportToImage() {
+  exportToImage(format = 'png') {
     const link = document.createElement('a');
-    link.download = `drawspace-${Date.now()}.png`;
-    link.href = this.canvas.toDataURL('image/png');
+    
+    if (format === 'jpeg' || format === 'jpg') {
+      // Create a temporary canvas to draw a white background for JPEG
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = this.canvas.width;
+      tempCanvas.height = this.canvas.height;
+      const tCtx = tempCanvas.getContext('2d');
+      tCtx.fillStyle = '#FFFFFF';
+      tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tCtx.drawImage(this.canvas, 0, 0);
+      
+      link.download = `drawspace-${Date.now()}.jpeg`;
+      link.href = tempCanvas.toDataURL('image/jpeg', 0.9);
+    } else {
+      link.download = `drawspace-${Date.now()}.png`;
+      link.href = this.canvas.toDataURL('image/png');
+    }
+    
+    link.click();
+  }
+
+  exportToJson() {
+    const data = {
+      objects: this.yObjects.toJSON(),
+      layers: this.yLayers.toJSON(),
+      version: '1.0'
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.download = `drawspace-${Date.now()}.json`;
+    link.href = URL.createObjectURL(blob);
     link.click();
   }
 
