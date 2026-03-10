@@ -36,9 +36,9 @@ const ChatPanel = ({ canvasId, engine, currentUser, isOpen, onClose }) => {
 
         fetchComments();
 
-        // Connect specifically to our backend's origin
-        const origin = API_BASE_URL ? new URL(API_BASE_URL).origin : 'http://localhost:5000';
-        const socket = io(origin);
+        // Connect specifically to our backend's centralized origin
+        const socketOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
+        const socket = io(socketOrigin);
         socketRef.current = socket;
 
         socket.emit('join_session', canvasId);

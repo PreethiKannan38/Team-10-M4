@@ -32,7 +32,11 @@ const Register = () => {
                 navigate('/dashboard');
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Registration failed. Try again.');
+            if (!err.response) {
+                setError('Could not connect to the server. Please check if the backend is running.');
+            } else {
+                setError(err.response?.data?.message || 'Registration failed. Try again.');
+            }
         } finally {
             setLoading(false);
         }
