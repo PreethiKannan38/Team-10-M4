@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageSquare, X, Filter, Loader } from 'lucide-react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, BACKEND_URL } from '../config';
 
 const ChatPanel = ({ canvasId, engine, currentUser, isOpen, onClose }) => {
     const [messages, setMessages] = useState([]);
@@ -37,8 +37,7 @@ const ChatPanel = ({ canvasId, engine, currentUser, isOpen, onClose }) => {
         fetchComments();
 
         // Connect specifically to our backend's centralized origin
-        const socketOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
-        const socket = io(socketOrigin);
+        const socket = io(BACKEND_URL);
         socketRef.current = socket;
 
         socket.emit('join_session', canvasId);
