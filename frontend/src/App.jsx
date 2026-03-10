@@ -14,7 +14,8 @@ import ChatPanel from './components/ChatPanel';
 import JoinCanvas from './components/JoinCanvas';
 import NotificationSystem from './components/NotificationSystem';
 
-import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ThemeProvider } from './context/ThemeProvider';
+import { useTheme } from './context/ThemeContext';
 import { useLayers } from './hooks/useLayers';
 import SidebarPanel from './components/Sidebar/SidebarPanel';
 
@@ -215,7 +216,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           try {
             const data = JSON.parse(event.target.result);
             canvasEngineRef.current.importFromJson(data);
-          } catch(err) {
+          } catch (err) {
             console.error('Invalid JSON', err);
             alert('Invalid JSON file format.');
           }
@@ -223,7 +224,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
         reader.readAsText(file);
       } else {
         reader.onload = (event) => {
-           canvasEngineRef.current.importFromImage(event.target.result);
+          canvasEngineRef.current.importFromImage(event.target.result);
         };
         reader.readAsDataURL(file);
       }
