@@ -88,6 +88,7 @@ export class CanvasEngineController {
 
     this.setupPointerListeners();
     this.setupWindowListeners();
+    window.addEventListener('engineRenderRequest', () => this.render());
     this.setupYjsListeners();
 
     // Wait for sync before initializing
@@ -492,6 +493,67 @@ export class CanvasEngineController {
     link.click();
   }
 
+  importFromJson(data) {
+    if (!data || !data.objects || !data.layers) return;
+    this.doc.transact(() => {
+      this.yObjects.clear();
+      this.yLayers.delete(0, this.yLayers.length);
+
+      Object.keys(data.objects).forEach(id => {
+        this.yObjects.set(id, data.objects[id]);
+      });
+      this.yLayers.insert(0, data.layers);
+    });
+    this.syncFromYjs();
+  }
+
+  importFromImage(src) {
+    const img = new Image();
+    img.onload = () => {
+      this.doc.transact(() => {
+        // Clear all objects and layers first to reconstruct the canvas
+        this.yObjects.clear();
+        this.yLayers.delete(0, this.yLayers.length);
+
+        // Add a single default layer
+        const layerId = 'default-layer';
+        this.yLayers.insert(0, [{
+          id: layerId,
+          name: 'Background',
+          visible: true,
+          locked: false,
+          opacity: 1.0,
+          objects: [],
+          metadata: {},
+        }]);
+
+        // Reset Pan and Zoom
+        this.state.pan = { x: 0, y: 0 };
+        this.state.zoom = 1.0;
+      });
+
+      // Let sync happen then add object
+      setTimeout(() => {
+        this.addObject({
+          type: 'image',
+          geometry: { 
+            x: (this.canvas.width / 2) - (img.width / 2), 
+            y: (this.canvas.height / 2) - (img.height / 2), 
+            width: img.width, 
+            height: img.height, 
+            src 
+          },
+          style: { opacity: 1.0 },
+          metadata: { name: 'Imported Image' }
+        });
+        
+        this.dispatchStateChange('zoom', this.state.zoom);
+        this.render();
+      }, 50);
+    };
+    img.src = src;
+  }
+
   removeObject(objectId) {
     if (!this.canEdit()) return;
     const obj = this.yObjects.get(objectId);
@@ -542,6 +604,7 @@ export class CanvasEngineController {
       case 'triangle': return BoundsCalculation.strokeBounds(geometry.points, sw);
       case 'polygon': return BoundsCalculation.strokeBounds(geometry.points, sw);
       case 'text': return { x: geometry.x, y: geometry.y, width: geometry.width || 200, height: geometry.height || 100 };
+      case 'image': return { x: geometry.x, y: geometry.y, width: geometry.width, height: geometry.height };
       default: return null;
     }
   }

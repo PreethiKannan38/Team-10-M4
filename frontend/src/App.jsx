@@ -196,6 +196,41 @@ function CanvasWorkspace({ canvasEngineRef }) {
       alert('Failed to tag timeline state');
     }
   };
+  const handleImportAction = (format) => {
+    if (!canvasEngineRef.current) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    if (format === 'json') {
+      input.accept = '.json';
+    } else if (format === 'png') {
+      input.accept = 'image/png';
+    } else if (format === 'jpeg') {
+      input.accept = 'image/jpeg, image/jpg';
+    }
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      if (format === 'json') {
+        reader.onload = (event) => {
+          try {
+            const data = JSON.parse(event.target.result);
+            canvasEngineRef.current.importFromJson(data);
+          } catch(err) {
+            console.error('Invalid JSON', err);
+            alert('Invalid JSON file format.');
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        reader.onload = (event) => {
+           canvasEngineRef.current.importFromImage(event.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
 
   const handleAction = (actionId) => {
     if (!canvasEngineRef.current) return;
@@ -277,6 +312,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onLogout={onLogout}
           userRole={userRole}
           onExport={(format) => handleAction(`export-${format}`)}
+          onImport={handleImportAction}
           branches={branches}
           onBranch={handleBranch}
           onBranchDelete={handleDeleteBranch}
