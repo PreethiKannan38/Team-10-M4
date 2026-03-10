@@ -249,8 +249,8 @@ function CanvasWorkspace({ canvasEngineRef }) {
                   layerId: layerId,
                   visible: true,
                   geometry: {
-                    x: (window.innerWidth / 2) - (img.width / 2) || 0,
-                    y: (window.innerHeight / 2) - (img.height / 2) || 0,
+                    x: 0,
+                    y: 0,
                     width: img.width,
                     height: img.height,
                     src: event.target.result
