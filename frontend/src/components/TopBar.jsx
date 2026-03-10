@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus, Trash2, Clock, Tag, MessageSquare } from 'lucide-react';
+import { Share2, Download, Upload, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus, Trash2, Clock, Tag, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
 import CollaboratorList from './CollaboratorList';
@@ -13,6 +13,7 @@ export default function TopBar({
   onNameChange,
   userRole,
   onExport,
+  onImport,
   onTag,
   branches = [],
   onBranch,
@@ -28,8 +29,12 @@ export default function TopBar({
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [importMenuOpen, setImportMenuOpen] = useState(false);
   const shareRef = useRef(null);
   const branchRef = useRef(null);
+  const exportRef = useRef(null);
+  const importRef = useRef(null);
   const [newName, setNewName] = useState(canvasName || 'Untitled Canvas');
   const navigate = useNavigate();
 
@@ -48,6 +53,12 @@ export default function TopBar({
       if (branchRef.current && !branchRef.current.contains(e.target)) {
         setBranchMenuOpen(false);
       }
+      if (exportRef.current && !exportRef.current.contains(e.target)) {
+        setExportMenuOpen(false);
+      }
+      if (importRef.current && !importRef.current.contains(e.target)) {
+        setImportMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -59,6 +70,8 @@ export default function TopBar({
       if (e.key === 'Escape') {
         setShareOpen(false);
         setBranchMenuOpen(false);
+        setExportMenuOpen(false);
+        setImportMenuOpen(false);
       }
     };
     document.addEventListener('keydown', handleEscape);
@@ -310,13 +323,75 @@ export default function TopBar({
             />
           </div>
 
-          <button
-            onClick={onExport}
-            className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 ml-1"
-            title="Download as PNG"
-          >
-            <Download className="w-4 h-4" />
-          </button>
+          <div className="relative flex items-center gap-2" ref={exportRef}>
+            <button
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 ml-1 ${exportMenuOpen ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : ''}`}
+              title="Download Canvas"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute top-12 right-0 w-40 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                <div className="p-1">
+                  <button
+                    onClick={() => { onExport('png'); setExportMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors font-semibold"
+                  >
+                    Download PNG
+                  </button>
+                  <button
+                    onClick={() => { onExport('jpeg'); setExportMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors font-semibold"
+                  >
+                    Download JPEG
+                  </button>
+                  <div className="h-px bg-slate-100 my-1 mx-2" />
+                  <button
+                    onClick={() => { onExport('json'); setExportMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors font-semibold flex items-center justify-between"
+                  >
+                    <span>Export JSON</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="relative flex items-center gap-2" ref={importRef}>
+            <button
+              onClick={() => setImportMenuOpen(!importMenuOpen)}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 ml-1 ${importMenuOpen ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : ''}`}
+              title="Upload to Canvas"
+            >
+              <Upload className="w-4 h-4" />
+            </button>
+            {importMenuOpen && (
+              <div className="absolute top-12 right-0 w-40 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                <div className="p-1">
+                  <button
+                    onClick={() => { onImport('png'); setImportMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors font-semibold"
+                  >
+                    Import PNG
+                  </button>
+                  <button
+                    onClick={() => { onImport('jpeg'); setImportMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors font-semibold"
+                  >
+                    Import JPEG
+                  </button>
+                  <div className="h-px bg-slate-100 my-1 mx-2" />
+                  <button
+                    onClick={() => { onImport('json'); setImportMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors font-semibold flex items-center justify-between"
+                  >
+                    <span>Import JSON</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="w-[1px] h-6 bg-slate-200 mx-2" />

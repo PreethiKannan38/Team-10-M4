@@ -16,7 +16,7 @@ A real-time collaborative digital canvas that allows multiple users to draw, bra
 2. run `npm install`.
 3. Create a `.env` file (copy from `.env.example`):
    ```
-   PORT=5000
+   PORT=5002
    MONGO_URI=your_mongodb_connection_string
    JWT_SECRET=your_jwt_secret
    ```

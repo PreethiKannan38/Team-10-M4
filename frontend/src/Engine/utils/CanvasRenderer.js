@@ -146,6 +146,21 @@ export class CanvasRenderer {
                 geometry.width || 200,
                 fontSize * 1.2
             );
+        } else if (type === 'image') {
+            if (!this._imgCache) this._imgCache = {};
+            if (!this._imgCache[obj.id]) {
+                const img = new Image();
+                this._imgCache[obj.id] = { img, loaded: false };
+                img.onload = () => {
+                   this._imgCache[obj.id].loaded = true;
+                   window.dispatchEvent(new CustomEvent('engineRenderRequest'));
+                };
+                img.onerror = (e) => console.error("CanvasRenderer Image Load Error:", e);
+                img.src = geometry.src;
+            }
+            if (this._imgCache[obj.id].loaded) {
+                ctx.drawImage(this._imgCache[obj.id].img, geometry.x, geometry.y, geometry.width, geometry.height);
+            }
         }
 
         // Highlight selected item
