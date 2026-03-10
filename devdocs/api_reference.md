@@ -16,11 +16,24 @@ All routes except `/auth/login` and `/auth/register` require a `Bearer <token>` 
 | GET | `/api/canvas` | List all canvases the user has access to. |
 | POST | `/api/canvas` | Create a new canvas. |
 | GET | `/api/canvas/:id` | Get detailed metadata for a specific canvas. |
-| PUT | `/api/canvas/:id/name` | Edit the name of a canvas. |
 | DELETE | `/api/canvas/:id` | Delete a canvas. |
 
-## Collaboration & Snapshots
+## Chat & Comments
+Object-level chat is stored in MongoDB and synchronized via Socket.io.
+
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| GET | `/api/snapshot/:id` | Retrieve the latest Yjs binary snapshot from DB. |
-| WS | `ws://server/room/:id` | WebSocket connection for real-time Yjs syncing. |
+| GET | `/api/comments/:canvasId` | Retrieve all comments for a specific canvas. |
+| POST | `/api/comments` | Post a new comment (internal/admin use). |
+
+## Collaboration & Real-time Sync
+DesignDeck uses a hybrid WebSocket approach.
+
+| Type | Endpoint | Protocol | Description |
+| :--- | :--- | :--- | :--- |
+| Yjs Sync | `/` | WebSockets | Real-time CRDT sync for layers and objects. |
+| Chat | `/socket.io/` | Socket.io | Real-time object-level chat broadcasting. |
+
+### Yjs Persistence
+The server automatically initializes a default layer on first connection:
+- **Layer 0**: ID `default-layer`, Name `Background`.

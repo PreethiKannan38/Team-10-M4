@@ -31,3 +31,8 @@ DesignDeck uses **CRDTs** (Conflict-free Replicated Data Types) via Yjs.
 - **Shared Objects**: All drawing objects are stored in a `Y.Map`.
 - **Latency Compensation**: Changes are applied locally first and synced in the background.
 - **Awareness**: Handles remote cursor locations and selection highlights using `y-awareness`.
+
+## 6. Input Management & Safeguards
+The engine uses global window listeners for shortcuts but includes an `isInputField` check to prevent interference with UI elements (like Chat).
+- **Interception**: If the user is focused on an `INPUT`, `TEXTAREA`, or `contenteditable`, the engine returns early.
+- **Keys Protected**: `Backspace` (Delete object), `Space` (Pan), `Ctrl+Z` (Undo).
