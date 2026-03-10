@@ -171,4 +171,37 @@ describe('Yjs Real-Time Synchronization Tests', () => {
         engineA.setSelectionAwareness(['obj-123']);
         expect(engineA.awareness.setLocalStateField).toHaveBeenCalledWith('selection', ['obj-123']);
     });
+
+    it('exportProjectJSON should create a downloadable JSON file without throwing', () => {
+        // Mock URL methods and anchor click
+        const mockUrl = 'blob:mock-url';
+        global.URL.createObjectURL = vi.fn().mockReturnValue(mockUrl);
+        global.URL.revokeObjectURL = vi.fn();
+
+        const clickFn = vi.fn();
+        const mockLink = { click: clickFn, href: '', download: '' };
+        const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValueOnce(mockLink);
+
+        expect(() => engineA.exportProjectJSON()).not.toThrow();
+        expect(clickFn).toHaveBeenCalledTimes(1);
+        expect(mockLink.download).toBe('canvas-project.json');
+        expect(global.URL.revokeObjectURL).toHaveBeenCalledWith(mockUrl);
+
+        createElementSpy.mockRestore();
+    });
+
+    it('exportPNG should trigger a canvas image download without throwing', () => {
+        // Mock toDataURL on the canvas mock
+        canvasA.toDataURL = vi.fn().mockReturnValue('data:image/png;base64,abc123');
+
+        const clickFn = vi.fn();
+        const mockLink = { click: clickFn, href: '', download: '' };
+        const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValueOnce(mockLink);
+
+        expect(() => engineA.exportPNG()).not.toThrow();
+        expect(clickFn).toHaveBeenCalledTimes(1);
+        expect(mockLink.download).toMatch(/\.png$/);
+
+        createElementSpy.mockRestore();
+    });
 });

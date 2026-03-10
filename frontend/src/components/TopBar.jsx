@@ -22,7 +22,9 @@ export default function TopBar({
   isChatOpen,
   setIsChatOpen,
   isAuthorshipMode,
-  onAuthorshipToggle
+  onAuthorshipToggle,
+  theme,
+  onThemeToggle
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
