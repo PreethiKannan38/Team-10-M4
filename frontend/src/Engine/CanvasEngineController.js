@@ -669,7 +669,7 @@ export class CanvasEngineController {
 
   exportToImage(format = 'png') {
     const link = document.createElement('a');
-    
+
     if (format === 'jpeg' || format === 'jpg') {
       // Create a temporary canvas to draw a white background for JPEG
       const tempCanvas = document.createElement('canvas');
@@ -679,14 +679,14 @@ export class CanvasEngineController {
       tCtx.fillStyle = '#FFFFFF';
       tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
       tCtx.drawImage(this.canvas, 0, 0);
-      
+
       link.download = `drawspace-${Date.now()}.jpeg`;
       link.href = tempCanvas.toDataURL('image/jpeg', 0.9);
     } else {
       link.download = `drawspace-${Date.now()}.png`;
       link.href = this.canvas.toDataURL('image/png');
     }
-    
+
     link.click();
   }
 
@@ -1044,19 +1044,6 @@ export class CanvasEngineController {
     });
   }
 
-  renderRemoteCursors() {
-    for (const [clientId, state] of this.awareness.getStates()) {
-      if (clientId === this.awareness.clientID) continue; // Skip self
-
-      const user = state.user;
-      const cursor = state.cursor;
-      const status = state.status;
-
-      if (user && cursor) {
-        this._drawRemoteCursor(cursor, user.color || '#F59E0B', user.name || 'User', status || 'active');
-      }
-    }
-  }
 
   _drawRemoteCursor(cursor, color, name, status) {
     if (status === 'offline') return;
@@ -1478,7 +1465,7 @@ export class CanvasEngineController {
         img.src = geometry.src;
       }
       if (this._imgCache[id].loaded) {
-         this.ctx.drawImage(this._imgCache[id].img, geometry.x, geometry.y, geometry.width, geometry.height);
+        this.ctx.drawImage(this._imgCache[id].img, geometry.x, geometry.y, geometry.width, geometry.height);
       }
     }
 
