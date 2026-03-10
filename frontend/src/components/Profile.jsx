@@ -35,9 +35,24 @@ const Profile = () => {
                         You are currently exploring Design Deck as a guest. Profiles and password settings are only available for registered users.
                     </p>
                     <div className="flex flex-col gap-4">
-                        <Link to="/register" className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black tracking-widest uppercase text-xs hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100">
+                        <button
+                            onClick={() => {
+                                localStorage.removeItem('isGuest');
+                                navigate('/register');
+                            }}
+                            className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black tracking-widest uppercase text-xs hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
+                        >
                             Create Account
-                        </Link>
+                        </button>
+                        <button
+                            onClick={() => {
+                                localStorage.removeItem('isGuest');
+                                navigate('/login');
+                            }}
+                            className="text-indigo-500 font-bold hover:text-indigo-700 transition-colors py-2"
+                        >
+                            Sign In Instead
+                        </button>
                         <Link to="/dashboard" className="text-slate-400 font-bold hover:text-slate-600 transition-colors py-2">
                             Back to Dashboard
                         </Link>

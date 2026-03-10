@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Mail, Lock, ArrowRight, Loader2, ChevronLeft, Sparkles, Palette, Zap } from 'lucide-react';
 import { API_BASE_URL } from '../config';
@@ -9,6 +9,8 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const location = useLocation();
+    const justRegistered = location.state?.registered;
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -61,6 +63,11 @@ const Login = () => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {justRegistered && (
+                            <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl text-sm font-bold border border-emerald-100 animate-in fade-in zoom-in">
+                                Account created successfully! Please sign in.
+                            </div>
+                        )}
                         {error && (
                             <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold border border-red-100 animate-in fade-in zoom-in">
                                 {error}

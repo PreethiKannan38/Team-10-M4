@@ -72,6 +72,8 @@ export class CanvasEngineController {
       redoPreview: false,
       authorshipHighlighting: false,
       hoveredObjectId: null,
+      hiddenPointers: new Set(),
+      mutedUsers: new Set(),
     };
 
     // Comment counts cache: { objectId -> count }
@@ -532,6 +534,34 @@ export class CanvasEngineController {
     }
     this.currentTool = null;
     this.state.isDrawing = false;
+  }
+
+  // --- LOCAL USER FILTERS (Distraction Free / Mute) ---
+  togglePointerVisibility(userId) {
+    if (this.state.hiddenPointers.has(userId)) {
+      this.state.hiddenPointers.delete(userId);
+    } else {
+      this.state.hiddenPointers.add(userId);
+    }
+    this.render();
+    this.dispatchStateChange('collaboratorFiltersChanged', {});
+  }
+
+  isPointerHidden(userId) {
+    return this.state.hiddenPointers.has(userId);
+  }
+
+  toggleUserMute(userName) {
+    if (this.state.mutedUsers.has(userName)) {
+      this.state.mutedUsers.delete(userName);
+    } else {
+      this.state.mutedUsers.add(userName);
+    }
+    this.dispatchStateChange('collaboratorFiltersChanged', {});
+  }
+
+  isUserMuted(userName) {
+    return this.state.mutedUsers.has(userName);
   }
 
   // --- PUBLIC API ---
@@ -1002,6 +1032,8 @@ export class CanvasEngineController {
       const selection = state.selection;
 
       if (user && selection && selection.length > 0) {
+        if (this.state.hiddenPointers.has(user.id)) return; // US7: Hide Distractions
+
         selection.forEach(objId => {
           const obj = this.yObjects.get(objId);
           if (obj && obj.bounds) {
@@ -1109,6 +1141,7 @@ export class CanvasEngineController {
       const user = state.user;
       const cursor = state.cursor;
       if (!user || !cursor) return;
+      if (this.state.hiddenPointers.has(user.id)) return; // US7: Hide Distractions
 
       const color = user.color || '#F59E0B';
       const name = user.name || 'User';
