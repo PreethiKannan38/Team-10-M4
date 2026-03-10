@@ -48,8 +48,15 @@ export const registerUser = async (req, res) => {
             res.status(400).json({ message: 'Invalid user data' });
         }
     } catch (error) {
-        console.error('Registration Error:', error);
-        res.status(500).json({ message: error.message || 'Server error during registration' });
+        console.error('Registration Error Details:', {
+            message: error.message,
+            stack: error.stack,
+            body: req.body
+        });
+        res.status(500).json({
+            message: error.message || 'Server error during registration',
+            error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 };
 
