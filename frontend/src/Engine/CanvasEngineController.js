@@ -510,46 +510,14 @@ export class CanvasEngineController {
   importFromImage(src) {
     const img = new Image();
     img.onload = () => {
-      this.doc.transact(() => {
-        // Clear all objects and layers first to reconstruct the canvas
-        this.yObjects.clear();
-        this.yLayers.delete(0, this.yLayers.length);
-
-        // Add a single default layer
-        const layerId = 'default-layer';
-        this.yLayers.insert(0, [{
-          id: layerId,
-          name: 'Background',
-          visible: true,
-          locked: false,
-          opacity: 1.0,
-          objects: [],
-          metadata: {},
-        }]);
-
-        // Reset Pan and Zoom
-        this.state.pan = { x: 0, y: 0 };
-        this.state.zoom = 1.0;
+      // Create image object on the current canvas
+      this.addObject({
+        type: 'image',
+        geometry: { x: this.state.pan.x * -1 + 100, y: this.state.pan.y * -1 + 100, width: img.width, height: img.height, src },
+        style: { opacity: 1.0 },
+        metadata: { name: 'Imported Image' }
       });
-
-      // Let sync happen then add object
-      setTimeout(() => {
-        this.addObject({
-          type: 'image',
-          geometry: { 
-            x: (this.canvas.width / 2) - (img.width / 2), 
-            y: (this.canvas.height / 2) - (img.height / 2), 
-            width: img.width, 
-            height: img.height, 
-            src 
-          },
-          style: { opacity: 1.0 },
-          metadata: { name: 'Imported Image' }
-        });
-        
-        this.dispatchStateChange('zoom', this.state.zoom);
-        this.render();
-      }, 50);
+      this.render();
     };
     img.src = src;
   }
