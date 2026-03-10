@@ -32,9 +32,10 @@ const ProtectedRoute = ({ children }) => {
 // Public Route Guard
 const PublicRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  const isGuest = localStorage.getItem('isGuest') === 'true';
 
-  if (token || isGuest) {
+  // Only redirect if there is a real authenticated user token.
+  // Guests (isGuest=true but no token) should still be able to access login/register.
+  if (token) {
     return <Navigate to="/dashboard" replace />;
   }
   return children;
@@ -280,6 +281,7 @@ function CanvasWorkspace({ canvasEngineRef }) {
           setIsChatOpen={setIsChatOpen}
           isAuthorshipMode={isAuthorshipMode}
           onAuthorshipToggle={handleAuthorshipToggle}
+          engine={canvasEngineRef.current}
         />
       </div>
 

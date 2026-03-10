@@ -9,9 +9,21 @@ const ChatPanel = ({ canvasId, engine, currentUser, isOpen, onClose }) => {
     const [inputValue, setInputValue] = useState('');
     const [selectedObjectId, setSelectedObjectId] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [filterSignal, setFilterSignal] = useState(0);
 
     const messagesEndRef = useRef(null);
     const socketRef = useRef(null);
+
+    // Track mute filter changes
+    useEffect(() => {
+        const handleFilterChange = (e) => {
+            if (e.detail?.key === 'collaboratorFiltersChanged') {
+                setFilterSignal(prev => prev + 1);
+            }
+        };
+        window.addEventListener('engineStateChange', handleFilterChange);
+        return () => window.removeEventListener('engineStateChange', handleFilterChange);
+    }, []);
 
     // Initialize socket connection & fetch historical messages
     useEffect(() => {
@@ -136,8 +148,11 @@ const ChatPanel = ({ canvasId, engine, currentUser, isOpen, onClose }) => {
 
     if (!isOpen) return null;
 
+    // Filter out messages from muted users (User Story 7)
+    const activeMessages = messages.filter(m => !engine || !engine.isUserMuted(m.user?.name));
+
     const displayMessages = selectedObjectId
-        ? messages.filter(m => m.objectId === selectedObjectId)
+        ? activeMessages.filter(m => m.objectId === selectedObjectId)
         : [];
 
     return (

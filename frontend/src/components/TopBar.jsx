@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Share2, Download, LogOut, Bell, Settings, Layout, Edit2, Check, User, GitBranch, ChevronDown, Plus, Trash2, Clock, Tag, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ShareDialog from './ShareDialog';
+import CollaboratorList from './CollaboratorList';
 
 export default function TopBar({
   canvas,
@@ -21,7 +22,8 @@ export default function TopBar({
   isChatOpen,
   setIsChatOpen,
   isAuthorshipMode,
-  onAuthorshipToggle
+  onAuthorshipToggle,
+  engine
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -318,6 +320,10 @@ export default function TopBar({
         </div>
 
         <div className="w-[1px] h-6 bg-slate-200 mx-2" />
+
+        <div className="flex items-center">
+            <CollaboratorList engine={engine} />
+        </div>
 
         {/* User Profile */}
         <div className="flex items-center gap-3 pl-2">

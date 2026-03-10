@@ -20,17 +20,11 @@ const Register = () => {
         setLoading(true);
 
         try {
-            const res = await axios.post(`${API_BASE_URL}/auth/register`, formData);
-            localStorage.setItem('token', res.data.token);
-            localStorage.setItem('user', JSON.stringify(res.data));
-
-            const redirectUrl = localStorage.getItem('redirectAfterLogin');
-            if (redirectUrl) {
-                localStorage.removeItem('redirectAfterLogin');
-                navigate(redirectUrl);
-            } else {
-                navigate('/dashboard');
-            }
+            await axios.post(`${API_BASE_URL}/auth/register`, formData);
+            // Clear any guest session so the user can reach the login page
+            localStorage.removeItem('isGuest');
+            // Redirect to login page so the user signs in with their new credentials
+            navigate('/login', { state: { registered: true } });
         } catch (err) {
             if (!err.response) {
                 setError('Could not connect to the server. Please check if the backend is running.');
