@@ -89,6 +89,7 @@ export class CanvasEngineController {
 
     this.setupPointerListeners();
     this.setupWindowListeners();
+    window.addEventListener('engineRenderRequest', () => this.render());
     this.setupYjsListeners();
 
     // Wait for sync before initializing
@@ -636,49 +637,69 @@ export class CanvasEngineController {
     return this.yObjects.get(id);
   }
 
-  exportToImage() {
+  exportToImage(format = 'png') {
     const link = document.createElement('a');
-    link.download = `drawspace-${Date.now()}.png`;
-    link.href = this.canvas.toDataURL('image/png');
+    
+    if (format === 'jpeg' || format === 'jpg') {
+      // Create a temporary canvas to draw a white background for JPEG
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = this.canvas.width;
+      tempCanvas.height = this.canvas.height;
+      const tCtx = tempCanvas.getContext('2d');
+      tCtx.fillStyle = '#FFFFFF';
+      tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tCtx.drawImage(this.canvas, 0, 0);
+      
+      link.download = `drawspace-${Date.now()}.jpeg`;
+      link.href = tempCanvas.toDataURL('image/jpeg', 0.9);
+    } else {
+      link.download = `drawspace-${Date.now()}.png`;
+      link.href = this.canvas.toDataURL('image/png');
+    }
+    
     link.click();
   }
 
-  /**
-   * Export canvas as PNG image.
-   * Named alias for exportToImage() per feature spec.
-   */
-  exportPNG() {
-    this.exportToImage();
-  }
-
-  /**
-   * Export the full project state as a downloadable JSON file.
-   * Serializes all objects, layers, and canvas metadata.
-   * File name: canvas-project.json
-   */
-  exportProjectJSON() {
+  exportToJson() {
     const data = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      metadata: {
-        canvasId: this.provider.roomname || 'unknown',
-      },
       objects: this.yObjects.toJSON(),
-      layers: this.yLayers.toArray(),
+      layers: this.yLayers.toJSON(),
+      version: '1.0'
     };
-
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
-    link.download = 'canvas-project.json';
-    link.href = url;
+    link.download = `drawspace-${Date.now()}.json`;
+    link.href = URL.createObjectURL(blob);
     link.click();
+  }
 
-    // Clean up the temporary object URL
-    URL.revokeObjectURL(url);
-    console.log('[Engine] Project exported as JSON');
+  importFromJson(data) {
+    if (!data || !data.objects || !data.layers) return;
+    this.doc.transact(() => {
+      this.yObjects.clear();
+      this.yLayers.delete(0, this.yLayers.length);
+
+      Object.keys(data.objects).forEach(id => {
+        this.yObjects.set(id, data.objects[id]);
+      });
+      this.yLayers.insert(0, data.layers);
+    });
+    this.syncFromYjs();
+  }
+
+  importFromImage(src) {
+    const img = new Image();
+    img.onload = () => {
+      // Create image object on the current canvas
+      this.addObject({
+        type: 'image',
+        geometry: { x: this.state.pan.x * -1 + 100, y: this.state.pan.y * -1 + 100, width: img.width, height: img.height, src },
+        style: { opacity: 1.0 },
+        metadata: { name: 'Imported Image' }
+      });
+      this.render();
+    };
+    img.src = src;
   }
 
   removeObject(objectId) {
@@ -731,6 +752,7 @@ export class CanvasEngineController {
       case 'triangle': return BoundsCalculation.strokeBounds(geometry.points, sw);
       case 'polygon': return BoundsCalculation.strokeBounds(geometry.points, sw);
       case 'text': return { x: geometry.x, y: geometry.y, width: geometry.width || 200, height: geometry.height || 100 };
+      case 'image': return { x: geometry.x, y: geometry.y, width: geometry.width, height: geometry.height };
       default: return null;
     }
   }
@@ -1410,6 +1432,21 @@ export class CanvasEngineController {
         geometry.width || 200,
         fontSize * 1.2
       );
+    } else if (type === 'image') {
+      if (!this._imgCache) this._imgCache = {};
+      if (!this._imgCache[id]) {
+        const img = new Image();
+        this._imgCache[id] = { img, loaded: false };
+        img.onload = () => {
+          this._imgCache[id].loaded = true;
+          this.render();
+        };
+        img.onerror = (e) => console.error("CanvasEngineController Image Load Error:", e);
+        img.src = geometry.src;
+      }
+      if (this._imgCache[id].loaded) {
+         this.ctx.drawImage(this._imgCache[id].img, geometry.x, geometry.y, geometry.width, geometry.height);
+      }
     }
 
     // Draw a bounding box for selected items for extra clarity

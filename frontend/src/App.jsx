@@ -168,6 +168,65 @@ function CanvasWorkspace({ canvasEngineRef }) {
     navigate('/login');
   };
 
+  const clearCanvas = () => {
+    if (canvasEngineRef.current) canvasEngineRef.current.clearAll();
+  };
+
+  const handleTagState = async () => {
+    const tagName = window.prompt("Enter a name for this timeline marker (e.g. 'Finished sketching base'):");
+    if (!tagName || !tagName.trim()) return;
+
+    const token = localStorage.getItem('token');
+    const isGuestCanvas = canvasId.startsWith('guest-');
+    if (!token && !isGuestCanvas) return;
+
+    try {
+      await axios.post(`${API_BASE_URL}/canvas/${canvasId}/tag`,
+        { name: tagName.trim() },
+        { headers: { Authorization: token ? `Bearer ${token}` : 'Bearer null' } }
+      );
+      // Let the user know it worked visually (since prompt halts the UI, a simple alert or just silent success is fine, let's keep it silent if success)
+    } catch (err) {
+      console.error('Error tagging timeline:', err);
+      alert('Failed to tag timeline state');
+    }
+  };
+  const handleImportAction = (format) => {
+    if (!canvasEngineRef.current) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    if (format === 'json') {
+      input.accept = '.json';
+    } else if (format === 'png') {
+      input.accept = 'image/png';
+    } else if (format === 'jpeg') {
+      input.accept = 'image/jpeg, image/jpg';
+    }
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      if (format === 'json') {
+        reader.onload = (event) => {
+          try {
+            const data = JSON.parse(event.target.result);
+            canvasEngineRef.current.importFromJson(data);
+          } catch(err) {
+            console.error('Invalid JSON', err);
+            alert('Invalid JSON file format.');
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        reader.onload = (event) => {
+           canvasEngineRef.current.importFromImage(event.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
+
   const handleAction = (actionId) => {
     if (!canvasEngineRef.current) return;
     switch (actionId) {
@@ -180,9 +239,14 @@ function CanvasWorkspace({ canvasEngineRef }) {
       case 'clear':
         clearCanvas();
         break;
-      case 'export':
-        // Toolbar 'export' button: prompt for format choice
-        handleExport();
+      case 'export-png':
+        canvasEngineRef.current.exportToImage('png');
+        break;
+      case 'export-jpeg':
+        canvasEngineRef.current.exportToImage('jpeg');
+        break;
+      case 'export-json':
+        canvasEngineRef.current.exportToJson();
         break;
       case 'tag':
         handleTagState();
@@ -251,7 +315,8 @@ function CanvasWorkspace({ canvasEngineRef }) {
           onDashboard={() => navigate('/dashboard')}
           onLogout={onLogout}
           userRole={userRole}
-          onExport={handleExport}
+          onExport={(format) => handleAction(`export-${format}`)}
+          onImport={handleImportAction}
           branches={branches}
           onBranch={handleBranch}
           onBranchDelete={handleDeleteBranch}
